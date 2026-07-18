@@ -245,15 +245,40 @@ svg circle[data-cat]{cursor:pointer}
 /* ---------- composer extras ---------- */
 .jdate-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
 .streak{font-size:12px; color:var(--accent); font-weight:600}
-.daypick{margin-top:10px}
 .editing-bar{margin-top:10px; font-size:12.5px; color:var(--ink-2); background:var(--accent-soft); border-radius:8px; padding:7px 11px; display:flex; align-items:center; gap:10px}
 .editing-bar button{color:var(--accent); font-weight:600; font-size:12.5px}
 .editing-bar button:hover{text-decoration:underline}
 
+/* ---------- week navigator ---------- */
+.weeknav{display:flex; align-items:center; gap:4px; margin-top:10px}
+.weeknav.disabled{opacity:.45; pointer-events:none}
+.weekstrip{display:flex; flex:1; gap:2px}
+.wday{flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 2px 8px; border-radius:10px; color:var(--ink-2)}
+.wday:hover{background:var(--surface-2)}
+.wday .wl{font-size:10px; color:var(--ink-3); text-transform:uppercase; font-weight:600}
+.wday .wn{font-size:15px; font-weight:600}
+.wday .wdot{width:4px; height:4px; border-radius:50%; background:transparent; margin-top:1px}
+.wday .wdot.show{background:var(--accent)}
+.wday.today .wn{color:var(--accent)}
+.wday.sel{background:var(--accent-soft)}
+.wday.sel .wn{color:var(--ink)}
+
+/* ---------- to-do ---------- */
+.todo-add{display:flex; gap:8px; margin:10px 0 8px}
+.todo-add input{flex:1; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:9px 11px}
+.todo-add input:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.todo-list{display:flex; flex-direction:column; margin-bottom:6px}
+.todo-row{display:flex; align-items:center; gap:10px; padding:7px 2px; border-top:1px solid var(--hairline)}
+.todo-row:first-child{border-top:0}
+.todo-check{width:19px; height:19px; border-radius:6px; border:1.5px solid var(--ink-3); display:grid; place-items:center; font-size:11px; font-weight:700; color:transparent; flex:0 0 auto}
+.todo-row.done .todo-check{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.todo-row .todo-text{flex:1; font-size:13.5px; overflow-wrap:break-word}
+.todo-row.done .todo-text{color:var(--ink-3); text-decoration:line-through}
+.todo-del{color:var(--ink-3); width:24px; height:24px; border-radius:6px; display:grid; place-items:center; font-size:13px; opacity:0; flex:0 0 auto; transition:opacity .12s}
+.todo-row:hover .todo-del, .todo-del:focus-visible{opacity:1}
+.todo-del:hover{color:var(--bad); background:var(--surface-2)}
+
 /* ---------- guided check-in ---------- */
-.gratitude-row{display:flex; flex-direction:column; gap:7px; margin:8px 0 16px}
-.ginput{background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:9px 11px; font-size:14px}
-.ginput:focus{outline:2px solid var(--accent); outline-offset:-1px}
 .checkin-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:4px 0 16px}
 .ci-row{font-size:13px; color:var(--ink-2); margin-top:5px; line-height:1.5}
 .ci-row .ci-k{font-weight:600; color:var(--ink); margin-right:4px}
@@ -460,16 +485,26 @@ svg circle[data-cat]{cursor:pointer}
         <span id="j-editing-label"></span>
         <button id="j-cancel">Cancel</button>
       </div>
-      <div class="chips daypick" id="j-daypick"></div>
+      <div class="weeknav" id="j-weeknav">
+        <button class="navbtn" id="w-prev" aria-label="Previous week">‹</button>
+        <div class="weekstrip" id="j-weekstrip"></div>
+        <button class="navbtn" id="w-next" aria-label="Next week">›</button>
+      </div>
+      <button class="today-link" id="w-today" hidden>Back to today</button>
+
+      <div class="jlabel" id="todo-label">To-do</div>
+      <div class="todo-add">
+        <input id="todo-input" type="text" placeholder="Add something you must do…" maxlength="80">
+        <button class="btn ghost" id="todo-add-btn">Add</button>
+      </div>
+      <div class="todo-list" id="todo-list"></div>
 
       <div class="jlabel">How are you feeling?</div>
       <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
 
-      <div class="jlabel">Grateful for</div>
-      <div class="gratitude-row">
-        <input class="ginput" id="j-g1" type="text" placeholder="Something small…" maxlength="60">
-        <input class="ginput" id="j-g2" type="text" placeholder="Something bigger…" maxlength="60">
-        <input class="ginput" id="j-g3" type="text" placeholder="Someone who helped…" maxlength="60">
+      <div class="field" style="margin:8px 0 16px">
+        <label for="j-g1">Grateful for</label>
+        <input id="j-g1" type="text" placeholder="What are you grateful for today?" maxlength="80">
       </div>
 
       <div class="jlabel">Today I…</div>
@@ -672,7 +707,6 @@ const catById = id => CATS.find(c=>c.id===id) || CATS[7];
 
 const MOODS = [
   {n:1,label:"Rough",v:"--mood-1"},
-  {n:2,label:"Low",  v:"--mood-2"},
   {n:3,label:"Okay", v:"--mood-3"},
   {n:4,label:"Good", v:"--mood-4"},
   {n:5,label:"Great",v:"--mood-5"},
@@ -682,9 +716,6 @@ const moodByN = n => MOODS.find(m=>m.n===n);
 const HABITS = [
   {id:"exercise", name:"Exercised",      v:"--cat-1"},
   {id:"read",     name:"Read a book",    v:"--cat-3"},
-  {id:"meditate", name:"Meditated",      v:"--cat-5"},
-  {id:"walk",     name:"Walked outside", v:"--cat-2"},
-  {id:"sleep",    name:"Slept well",     v:"--cat-8"},
 ];
 const habitById = id => HABITS.find(h=>h.id===id);
 
@@ -722,7 +753,8 @@ let expenses = load("db_expenses",[]);   // {id, amt, cat, note, date:"YYYY-MM-D
 let journal  = load("db_journal",[]);    // {id, date, mood, habits, prompt, text, ts}
 let budgets  = load("db_budgets",{});    // {_all: n, <catId>: n}
 let poops    = load("db_poops",[]);      // {id, date, type, ts}
-let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop", item, delAt}
+let todos    = load("db_todos",[]);      // {id, date, text, done, ts}
+let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop"|"todo", item, delAt}
 let userEmail = load("db_email","");
 
 /* ---------- helpers ---------- */
@@ -734,6 +766,7 @@ const pad = n => String(n).padStart(2,"0");
 const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const todayIso = () => isoDate(new Date());
 const monthKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const mondayOf = d => { const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; };
 const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const parseIso = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
@@ -1056,6 +1089,7 @@ let selMood = 0;
 let curPrompt = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
 let query = "";
 let selJDate = todayIso();
+let weekStart = mondayOf(new Date());
 let editingEntry = null;
 let jFilter = null;   // {type:"mood"|"habit", value}
 
@@ -1064,15 +1098,64 @@ function updateJDateLabel(){
   const iso = editingEntry ? (journal.find(e=>e.id===editingEntry)?.date || selJDate) : selJDate;
   $("#j-date").textContent = parseIso(iso).toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"});
 }
-function renderDayPick(){
-  if (editingEntry){ $("#j-daypick").innerHTML = ""; return; }
-  const opts = [[todayIso(),"Today"],[yesterdayIso(),"Yesterday"]];
-  $("#j-daypick").innerHTML = opts.map(([iso,l])=>
-    `<button class="chip" data-d="${iso}" aria-pressed="${iso===selJDate}">${l}</button>`).join("");
-  $("#j-daypick").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
-    selJDate = b.dataset.d; renderDayPick(); updateJDateLabel();
+
+/* --- week navigator --- */
+function renderWeekNav(){
+  const editing = !!editingEntry;
+  $("#j-weeknav").classList.toggle("disabled", editing);
+  const todoOpen = {};
+  todos.forEach(t=>{ if(!t.done) todoOpen[t.date] = true; });
+  const days = [...Array(7)].map((_,i)=>{ const d=new Date(weekStart); d.setDate(d.getDate()+i); return isoDate(d); });
+  $("#j-weekstrip").innerHTML = days.map(iso=>{
+    const d = parseIso(iso);
+    const wl = d.toLocaleDateString(undefined,{weekday:"narrow"});
+    return `<button class="wday${iso===selJDate?" sel":""}${iso===todayIso()?" today":""}" data-d="${iso}" aria-pressed="${iso===selJDate}">
+      <span class="wl">${wl}</span><span class="wn">${d.getDate()}</span><span class="wdot${todoOpen[iso]?" show":""}"></span></button>`;
+  }).join("");
+  $("#j-weekstrip").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
+    selJDate = b.dataset.d; renderWeekNav(); updateJDateLabel(); renderTodos();
+  });
+  const isCurrentWeek = weekStart.getTime()===mondayOf(new Date()).getTime();
+  $("#w-next").disabled = isCurrentWeek;
+  $("#w-today").hidden = isCurrentWeek;
+}
+$("#w-prev").onclick = ()=>{ weekStart.setDate(weekStart.getDate()-7); renderWeekNav(); };
+$("#w-next").onclick = ()=>{ if($("#w-next").disabled) return; weekStart.setDate(weekStart.getDate()+7); renderWeekNav(); };
+$("#w-today").onclick = ()=>{ weekStart = mondayOf(new Date()); selJDate = todayIso(); renderWeekNav(); updateJDateLabel(); renderTodos(); };
+
+/* --- to-do list, scoped to the selected day --- */
+function renderTodos(){
+  $("#todo-label").textContent = selJDate===todayIso() ? "To-do" : `To-do — ${dayLabel(selJDate)}`;
+  const list = todos.filter(t=>t.date===selJDate).sort((a,b)=>a.ts-b.ts);
+  const el = $("#todo-list");
+  if (!list.length){ el.innerHTML = `<div class="empty">Nothing on the list for this day.</div>`; return; }
+  el.innerHTML = list.map(t=>`<div class="todo-row${t.done?" done":""}">
+    <button class="todo-check" data-tc="${t.id}" aria-label="Mark done">✓</button>
+    <span class="todo-text">${esc(t.text)}</span>
+    <button class="todo-del" data-tdel="${t.id}" aria-label="Delete">×</button></div>`).join("");
+  el.querySelectorAll("[data-tc]").forEach(b=>b.onclick=()=>{
+    const t = todos.find(x=>x.id===b.dataset.tc);
+    if (t){ t.done = !t.done; save("db_todos",todos); renderTodos(); renderWeekNav(); }
+  });
+  el.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
+    const item = todos.find(x=>x.id===b.dataset.tdel);
+    todos = todos.filter(x=>x.id!==b.dataset.tdel);
+    save("db_todos",todos);
+    if (item) trashItem("todo", item);
+    renderTodos(); renderWeekNav();
   });
 }
+function addTodo(){
+  const input = $("#todo-input");
+  const text = input.value.trim();
+  if (!text) return;
+  todos.push({id:uid(), date:selJDate, text, done:false, ts:Date.now()});
+  save("db_todos",todos);
+  input.value = "";
+  renderTodos(); renderWeekNav();
+}
+$("#todo-add-btn").onclick = addTodo;
+$("#todo-input").addEventListener("keydown", e=>{ if(e.key==="Enter") addTodo(); });
 function renderStreakNudge(){
   const days = new Set(journal.map(e=>e.date));
   let streak = 0;
@@ -1114,14 +1197,14 @@ jText.addEventListener("input", ()=>{
 
 function checkinFields(){
   return {
-    gratitude: [$("#j-g1"),$("#j-g2"),$("#j-g3")].map(i=>i.value.trim()).filter(Boolean),
+    gratitude: [$("#j-g1").value.trim()].filter(Boolean),
     win: $("#j-win").value.trim(),
     challenge: $("#j-challenge").value.trim(),
     forward: $("#j-forward").value.trim(),
   };
 }
 function clearCheckin(){
-  ["j-g1","j-g2","j-g3","j-win","j-challenge","j-forward"].forEach(id=>$("#"+id).value="");
+  ["j-g1","j-win","j-challenge","j-forward"].forEach(id=>$("#"+id).value="");
 }
 
 $("#j-save").onclick = ()=>{
@@ -1141,7 +1224,7 @@ $("#j-save").onclick = ()=>{
   clearCheckin();
   selMood=0; renderMoodPicker();
   selHabits.clear(); renderHabitPicker();
-  selJDate = todayIso(); renderDayPick(); updateJDateLabel();
+  selJDate = todayIso(); weekStart = mondayOf(new Date()); renderWeekNav(); updateJDateLabel(); renderTodos();
   $("#j-shuffle").click();
   renderJournal();
 };
@@ -1154,8 +1237,7 @@ function startEditEntry(id){
   jText.dispatchEvent(new Event("input"));
   selMood = e.mood || 0; renderMoodPicker();
   selHabits = new Set(e.habits || []); renderHabitPicker();
-  const g = e.gratitude || [];
-  $("#j-g1").value = g[0]||""; $("#j-g2").value = g[1]||""; $("#j-g3").value = g[2]||"";
+  $("#j-g1").value = (e.gratitude||[])[0] || "";
   $("#j-win").value = e.win || "";
   $("#j-challenge").value = e.challenge || "";
   $("#j-forward").value = e.forward || "";
@@ -1163,7 +1245,8 @@ function startEditEntry(id){
   $("#j-editing").hidden = false;
   $("#j-editing-label").textContent = `Editing your entry from ${dayLabel(e.date).toLowerCase()}`;
   $("#j-save").textContent = "Save changes";
-  renderDayPick(); updateJDateLabel();
+  weekStart = mondayOf(parseIso(e.date));
+  renderWeekNav(); updateJDateLabel(); renderTodos();
   document.querySelector(".composer").scrollIntoView({behavior:"smooth", block:"start"});
   jText.focus();
 }
@@ -1171,7 +1254,8 @@ function stopEditEntry(){
   editingEntry = null;
   $("#j-editing").hidden = true;
   $("#j-save").textContent = "Save entry";
-  renderDayPick(); updateJDateLabel();
+  weekStart = mondayOf(new Date());
+  renderWeekNav(); updateJDateLabel(); renderTodos();
 }
 $("#j-cancel").onclick = ()=>{
   jText.value=""; $("#j-count").textContent="";
@@ -1376,7 +1460,7 @@ function renderList(){
   el.querySelectorAll("[data-fh]").forEach(c=>c.onclick=()=>setJFilter({type:"habit", value:c.dataset.fh}));
 }
 
-function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderList(); renderReview(); }
+function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderWeekNav(); renderTodos(); renderList(); renderReview(); }
 
 /* =====================================================
    REVIEW
@@ -1678,7 +1762,7 @@ $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 /* =====================================================
    RECENTLY DELETED (trash + undo)
 ===================================================== */
-const KIND_LABEL = {expense:"Expense", entry:"Journal entry", poop:"Poop log"};
+const KIND_LABEL = {expense:"Expense", entry:"Journal entry", poop:"Poop log", todo:"To-do"};
 
 function purgeTrash(){
   const cutoff = Date.now() - 30*24*60*60*1000;
@@ -1709,6 +1793,7 @@ function restoreFromTrash(tid){
   if (t.kind==="expense" && !expenses.some(x=>x.id===t.item.id)){ expenses.push(t.item); save("db_expenses",expenses); }
   if (t.kind==="entry"   && !journal.some(x=>x.id===t.item.id)) { journal.push(t.item);  save("db_journal",journal); }
   if (t.kind==="poop"    && !poops.some(x=>x.id===t.item.id))   { poops.push(t.item);    save("db_poops",poops); }
+  if (t.kind==="todo"    && !todos.some(x=>x.id===t.item.id))   { todos.push(t.item);    save("db_todos",todos); }
   renderSpend(); renderJournal();
   renderBinLink();
   if (!$("#bin-wrap").hidden) renderBin();
@@ -1723,8 +1808,9 @@ $("#undo-btn").onclick = ()=>{
 function binDesc(t){
   if (t.kind==="expense") return `${fmt(t.item.amt)} — ${t.item.note || catById(t.item.cat).name} (${dayLabel(t.item.date)})`;
   if (t.kind==="poop")    return `${poopById(t.item.type)?.label || "Poop"} (${dayLabel(t.item.date)})`;
+  if (t.kind==="todo")    return `${t.item.text} (${dayLabel(t.item.date)})`;
   const e = t.item;
-  const bits = e.text || (e.gratitude||[]).filter(Boolean)[0] || e.win || (e.mood ? moodByN(e.mood).label : "entry");
+  const bits = e.text || (e.gratitude||[]).filter(Boolean)[0] || e.win || (e.mood ? (moodByN(e.mood)?.label || "entry") : "entry");
   return `${dayLabel(e.date)} — ${bits.length>48 ? bits.slice(0,48)+"…" : bits}`;
 }
 
@@ -1788,8 +1874,8 @@ function openDlg(mode){
   setStatus("");
   if (mode === "export"){
     dlg.title.textContent = "Export data";
-    dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, budgets. Copy it, then Import it on your other device.";
-    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops}, null, 2);
+    dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, to-dos, budgets. Copy it, then Import it on your other device.";
+    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, todos}, null, 2);
     dlg.text.readOnly = true;
     dlg.primary.textContent = "Copy to clipboard";
     dlg.download.hidden = inNativeApp;
@@ -1879,14 +1965,21 @@ dlg.primary.onclick = async ()=>{
     poops = pm.list; pAdded = pm.added;
     save("db_poops",poops);
   }
+  let tAdded = 0;
+  if (Array.isArray(data.todos)){
+    const okT = data.todos.filter(x=>x && typeof x.id==="string" && typeof x.date==="string" && typeof x.text==="string");
+    const tm = mergeById(todos, okT);
+    todos = tm.list; tAdded = tm.added;
+    save("db_todos",todos);
+  }
   if (data.budgets && typeof data.budgets==="object" && !Array.isArray(data.budgets)){
     budgets = {...data.budgets, ...budgets};   // local values win on conflict
     save("db_budgets",budgets);
   }
   save("db_expenses",expenses); save("db_journal",journal);
   renderSpend(); renderJournal();
-  const added = e.added+j.added+pAdded;
-  setStatus(`Imported: ${e.added} expense${e.added===1?"":"s"}, ${j.added} journal entr${j.added===1?"y":"ies"}, ${pAdded} poop log${pAdded===1?"":"s"} added${added===0?" (everything was already here)":""}.`, true);
+  const added = e.added+j.added+pAdded+tAdded;
+  setStatus(`Imported: ${e.added} expense${e.added===1?"":"s"}, ${j.added} journal entr${j.added===1?"y":"ies"}, ${pAdded} poop log${pAdded===1?"":"s"}, ${tAdded} to-do${tAdded===1?"":"s"} added${added===0?" (everything was already here)":""}.`, true);
 };
 
 /* ---------- boot ---------- */
@@ -1895,7 +1988,7 @@ renderBinLink();
 renderCatChips();
 renderMoodPicker();
 renderHabitPicker();
-renderDayPick();
+renderWeekNav();
 updateJDateLabel();
 renderSpend();
 renderJournal();
