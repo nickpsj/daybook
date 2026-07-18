@@ -377,6 +377,26 @@ svg circle[data-cat]{cursor:pointer}
   .sumactions .btn{flex:1; text-align:center}
 }
 
+/* ---------- undo toast ---------- */
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(66px + env(safe-area-inset-bottom, 0px)); z-index:55;
+  background:var(--ink); color:var(--ground); border-radius:999px; padding:10px 12px 10px 17px;
+  display:flex; align-items:center; gap:14px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); white-space:nowrap}
+.toast button{color:var(--ground); font-weight:700; text-decoration:underline; text-underline-offset:2px; padding:2px 4px}
+
+/* ---------- recently deleted bin ---------- */
+.bin-list{overflow-y:auto; min-height:60px; max-height:340px; margin-top:4px}
+.binrow{display:flex; align-items:center; gap:10px; padding:9px 2px; border-top:1px solid var(--hairline); font-size:13.5px}
+.binrow:first-child{border-top:0}
+.bininfo{flex:1; min-width:0}
+.bininfo .k{display:block; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bininfo .s{font-size:11.5px; color:var(--ink-3)}
+.binbtn{color:var(--accent); font-weight:600; font-size:12.5px; padding:4px 10px; border:1px solid var(--hairline); border-radius:999px; flex:0 0 auto}
+.binbtn:hover{border-color:var(--accent)}
+.binx{color:var(--ink-3); width:26px; height:26px; border-radius:6px; display:grid; place-items:center; font-size:14px; flex:0 0 auto}
+.binx:hover{color:var(--bad); background:var(--surface-2)}
+.btn.danger{color:var(--bad)}
+.btn.danger:hover{border-color:var(--bad)}
+
 /* ---------- tooltip ---------- */
 #tip{position:fixed; z-index:40; pointer-events:none; background:var(--ink); color:var(--ground);
   font-size:12.5px; line-height:1.4; padding:7px 10px; border-radius:7px; box-shadow:var(--shadow);
@@ -571,7 +591,28 @@ svg circle[data-cat]{cursor:pointer}
     <button id="d-export">Export data</button>
     <span aria-hidden="true">·</span>
     <button id="d-import">Import data</button>
+    <span aria-hidden="true">·</span>
+    <button id="d-bin">Recently deleted</button>
   </footer>
+</div>
+
+<div id="bin-wrap" hidden>
+  <div class="dlg-backdrop" id="bin-backdrop"></div>
+  <div class="dlg card" role="dialog" aria-modal="true" aria-labelledby="bin-title">
+    <h3 id="bin-title">Recently deleted</h3>
+    <p class="dlg-sub">Deleted items are kept here for 30 days, then cleared automatically. Restore them, or delete forever with ×.</p>
+    <div class="bin-list" id="bin-list"></div>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="bin-close">Close</button>
+      <span class="dlg-spring"></span>
+      <button class="btn ghost danger" id="bin-empty" hidden>Empty bin</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="undo-toast" hidden>
+  <span id="undo-label"></span>
+  <button id="undo-btn">Undo</button>
 </div>
 
 <nav class="tabbar" aria-label="Sections">
@@ -681,6 +722,7 @@ let expenses = load("db_expenses",[]);   // {id, amt, cat, note, date:"YYYY-MM-D
 let journal  = load("db_journal",[]);    // {id, date, mood, habits, prompt, text, ts}
 let budgets  = load("db_budgets",{});    // {_all: n, <catId>: n}
 let poops    = load("db_poops",[]);      // {id, date, type, ts}
+let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop", item, delAt}
 let userEmail = load("db_email","");
 
 /* ---------- helpers ---------- */
@@ -981,9 +1023,12 @@ function renderLedger(){
   }).join("");
 
   el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    const item = expenses.find(e=>e.id===b.dataset.del);
     expenses = expenses.filter(e=>e.id!==b.dataset.del);
     if (editingExpense===b.dataset.del) stopEditExpense();
-    save("db_expenses",expenses); renderSpend();
+    save("db_expenses",expenses);
+    if (item) trashItem("expense", item);
+    renderSpend();
   });
   el.querySelectorAll("[data-editx]").forEach(b=>b.onclick=()=>startEditExpense(b.dataset.editx));
   bindLedgerClear(el);
@@ -1237,8 +1282,11 @@ function renderPoop(){
     save("db_poops",poops); renderPoop(); renderReview();
   });
   $("#p-today").querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{
+    const item = poops.find(p=>p.id===b.dataset.pdel);
     poops = poops.filter(p=>p.id!==b.dataset.pdel);
-    save("db_poops",poops); renderPoop(); renderReview();
+    save("db_poops",poops);
+    if (item) trashItem("poop", item);
+    renderPoop(); renderReview();
   });
   $("#p-strip").querySelectorAll(".sday").forEach(el=>{
     el.addEventListener("mousemove",e=>{
@@ -1316,9 +1364,12 @@ function renderList(){
   }).join("");
 
   el.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{
+    const item = journal.find(e=>e.id===b.dataset.jdel);
     journal = journal.filter(e=>e.id!==b.dataset.jdel);
     if (editingEntry===b.dataset.jdel) stopEditEntry();
-    save("db_journal",journal); renderJournal();
+    save("db_journal",journal);
+    if (item) trashItem("entry", item);
+    renderJournal();
   });
   el.querySelectorAll("[data-jedit]").forEach(b=>b.onclick=()=>startEditEntry(b.dataset.jedit));
   el.querySelectorAll("[data-fm]").forEach(c=>c.onclick=()=>setJFilter({type:"mood", value:+c.dataset.fm}));
@@ -1625,6 +1676,101 @@ function renderReview(){
 $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 
 /* =====================================================
+   RECENTLY DELETED (trash + undo)
+===================================================== */
+const KIND_LABEL = {expense:"Expense", entry:"Journal entry", poop:"Poop log"};
+
+function purgeTrash(){
+  const cutoff = Date.now() - 30*24*60*60*1000;
+  const before = trash.length;
+  trash = trash.filter(t=>t.delAt>cutoff);
+  if (trash.length!==before) save("db_trash",trash);
+}
+
+let lastTrashTid = null, undoTimer = null;
+function trashItem(kind, item){
+  const tid = uid();
+  trash.push({tid, kind, item, delAt:Date.now()});
+  save("db_trash",trash);
+  lastTrashTid = tid;
+  $("#undo-label").textContent = `${KIND_LABEL[kind]} deleted`;
+  $("#undo-toast").hidden = false;
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(()=>{ $("#undo-toast").hidden = true; }, 6000);
+  renderBinLink();
+}
+
+function restoreFromTrash(tid){
+  const i = trash.findIndex(t=>t.tid===tid);
+  if (i<0) return;
+  const t = trash[i];
+  trash.splice(i,1);
+  save("db_trash",trash);
+  if (t.kind==="expense" && !expenses.some(x=>x.id===t.item.id)){ expenses.push(t.item); save("db_expenses",expenses); }
+  if (t.kind==="entry"   && !journal.some(x=>x.id===t.item.id)) { journal.push(t.item);  save("db_journal",journal); }
+  if (t.kind==="poop"    && !poops.some(x=>x.id===t.item.id))   { poops.push(t.item);    save("db_poops",poops); }
+  renderSpend(); renderJournal();
+  renderBinLink();
+  if (!$("#bin-wrap").hidden) renderBin();
+}
+
+$("#undo-btn").onclick = ()=>{
+  if (lastTrashTid) restoreFromTrash(lastTrashTid);
+  lastTrashTid = null;
+  $("#undo-toast").hidden = true;
+};
+
+function binDesc(t){
+  if (t.kind==="expense") return `${fmt(t.item.amt)} — ${t.item.note || catById(t.item.cat).name} (${dayLabel(t.item.date)})`;
+  if (t.kind==="poop")    return `${poopById(t.item.type)?.label || "Poop"} (${dayLabel(t.item.date)})`;
+  const e = t.item;
+  const bits = e.text || (e.gratitude||[]).filter(Boolean)[0] || e.win || (e.mood ? moodByN(e.mood).label : "entry");
+  return `${dayLabel(e.date)} — ${bits.length>48 ? bits.slice(0,48)+"…" : bits}`;
+}
+
+function renderBinLink(){
+  $("#d-bin").textContent = trash.length ? `Recently deleted (${trash.length})` : "Recently deleted";
+}
+
+function renderBin(){
+  const el = $("#bin-list");
+  $("#bin-empty").hidden = !trash.length;
+  $("#bin-empty").textContent = "Empty bin";
+  if (!trash.length){
+    el.innerHTML = `<div class="empty">Nothing here. Deleted items land in this bin and stay for 30 days.</div>`;
+    return;
+  }
+  el.innerHTML = [...trash].sort((a,b)=>b.delAt-a.delAt).map(t=>
+    `<div class="binrow">
+      <div class="bininfo"><span class="k">${esc(KIND_LABEL[t.kind])} — ${esc(binDesc(t))}</span>
+      <span class="s">deleted ${dayLabel(isoDate(new Date(t.delAt))).toLowerCase()}</span></div>
+      <button class="binbtn" data-restore="${t.tid}">Restore</button>
+      <button class="binx" data-forever="${t.tid}" aria-label="Delete forever">×</button>
+    </div>`).join("");
+  el.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreFromTrash(b.dataset.restore));
+  el.querySelectorAll("[data-forever]").forEach(b=>b.onclick=()=>{
+    trash = trash.filter(t=>t.tid!==b.dataset.forever);
+    save("db_trash",trash);
+    renderBin(); renderBinLink();
+  });
+}
+
+$("#d-bin").onclick = ()=>{ renderBin(); $("#bin-wrap").hidden = false; };
+$("#bin-close").onclick = ()=>{ $("#bin-wrap").hidden = true; };
+$("#bin-backdrop").onclick = ()=>{ $("#bin-wrap").hidden = true; };
+$("#bin-empty").onclick = ()=>{
+  const b = $("#bin-empty");
+  if (b.textContent !== "Really delete all?"){
+    b.textContent = "Really delete all?";
+    setTimeout(()=>{ b.textContent = "Empty bin"; }, 3000);
+    return;
+  }
+  trash = [];
+  save("db_trash",trash);
+  renderBin(); renderBinLink();
+};
+
+/* =====================================================
    EXPORT / IMPORT
 ===================================================== */
 const dlg = {
@@ -1667,7 +1813,11 @@ $("#d-export").onclick = ()=>openDlg("export");
 $("#d-import").onclick = ()=>openDlg("import");
 $("#dlg-close").onclick = closeDlg;
 $("#dlg-backdrop").onclick = closeDlg;
-document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !dlg.wrap.hidden) closeDlg(); });
+document.addEventListener("keydown", e=>{
+  if (e.key!=="Escape") return;
+  if (!dlg.wrap.hidden) closeDlg();
+  if (!$("#bin-wrap").hidden) $("#bin-wrap").hidden = true;
+});
 
 dlg.download.onclick = ()=>{
   try{
@@ -1740,6 +1890,8 @@ dlg.primary.onclick = async ()=>{
 };
 
 /* ---------- boot ---------- */
+purgeTrash();
+renderBinLink();
 renderCatChips();
 renderMoodPicker();
 renderHabitPicker();
