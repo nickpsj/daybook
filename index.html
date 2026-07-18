@@ -72,17 +72,23 @@ input,textarea,select{font:inherit; color:var(--ink)}
 .num{font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition:none!important; animation:none!important} }
 
-.app{max-width:960px; margin:0 auto; padding:20px 20px 72px}
+.app{max-width:960px; margin:0 auto; padding:20px 20px 90px}
 
 /* ---------- header ---------- */
 .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:6px 2px 22px; flex-wrap:wrap}
 .brand{display:flex; align-items:baseline; gap:10px}
 .brand h1{font-size:22px; font-weight:600; letter-spacing:-.01em}
 .brand .sub{color:var(--ink-3); font-size:13px}
-.tabsel{position:relative; display:inline-flex}
-.tabsel select{appearance:none; -webkit-appearance:none; background:var(--surface-2); border:1px solid var(--hairline); border-radius:999px; padding:8px 42px 8px 18px; font:inherit; font-weight:600; font-size:14px; color:var(--ink); cursor:pointer}
-.tabsel select:hover{border-color:var(--accent)}
-.tabsel::after{content:""; position:absolute; right:18px; top:50%; width:7px; height:7px; border-right:2px solid var(--accent); border-bottom:2px solid var(--accent); transform:translateY(-70%) rotate(45deg); pointer-events:none}
+/* ---------- bottom tab bar ---------- */
+.tabbar{position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; justify-content:center;
+  background:color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--hairline); padding-bottom:env(safe-area-inset-bottom, 0px)}
+.tabbar-inner{display:flex; width:100%; max-width:960px}
+.tabbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:9px 4px 8px; color:var(--ink-3); transition:color .15s}
+.tabbtn svg{width:22px; height:22px}
+.tabbtn span{font-size:10.5px; font-weight:600}
+.tabbtn[aria-current="true"]{color:var(--accent)}
+.tabbtn:active{opacity:.65}
 
 /* ---------- cards ---------- */
 .card{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r); box-shadow:var(--shadow)}
@@ -244,6 +250,21 @@ svg circle[data-cat]{cursor:pointer}
 .editing-bar button{color:var(--accent); font-weight:600; font-size:12.5px}
 .editing-bar button:hover{text-decoration:underline}
 
+/* ---------- guided check-in ---------- */
+.gratitude-row{display:flex; flex-direction:column; gap:7px; margin:8px 0 16px}
+.ginput{background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:9px 11px; font-size:14px}
+.ginput:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.checkin-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:4px 0 16px}
+.ci-row{font-size:13px; color:var(--ink-2); margin-top:5px; line-height:1.5}
+.ci-row .ci-k{font-weight:600; color:var(--ink); margin-right:4px}
+
+/* ---------- highlights ---------- */
+.hl-group + .hl-group{margin-top:14px}
+.hl-label{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-bottom:2px}
+.hl-item{font-size:13.5px; padding:7px 0; border-top:1px solid var(--hairline); display:flex; justify-content:space-between; gap:10px}
+.hl-item:first-of-type{border-top:0}
+.hl-date{color:var(--ink-3); font-size:11.5px; flex:0 0 auto; white-space:nowrap; padding-top:1px}
+
 /* ---------- flashback ---------- */
 .flash{padding:13px 18px; border-top:1px solid var(--hairline)}
 .flash:first-child{border-top:0}
@@ -332,12 +353,10 @@ svg circle[data-cat]{cursor:pointer}
 
 /* ---------- mobile ---------- */
 @media (max-width:560px){
-  .app{padding:12px 12px 56px}
+  .app{padding:12px 12px 96px}
   input,select,textarea{font-size:16px}   /* prevents iOS focus zoom */
   .topbar{padding-bottom:14px}
   .brand h1{font-size:19px}
-  .tabsel{flex:1}
-  .tabsel select{width:100%}
   .entry,.composer{padding:14px 14px 16px}
   .f-amt{width:104px}
   .f-amt input{font-size:17px}
@@ -369,14 +388,6 @@ svg circle[data-cat]{cursor:pointer}
 <div class="app">
   <header class="topbar">
     <div class="brand"><h1>Daybook</h1><span class="sub">spending &amp; journal</span></div>
-    <span class="tabsel">
-      <select id="tab-select" aria-label="Active tab">
-        <option value="spend">Spending</option>
-        <option value="journal">Journal</option>
-        <option value="money">Money review</option>
-        <option value="life">Life review</option>
-      </select>
-    </span>
   </header>
 
   <!-- ============ SPENDING ============ -->
@@ -430,13 +441,31 @@ svg circle[data-cat]{cursor:pointer}
         <button id="j-cancel">Cancel</button>
       </div>
       <div class="chips daypick" id="j-daypick"></div>
+
+      <div class="jlabel">How are you feeling?</div>
+      <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
+
+      <div class="jlabel">Grateful for</div>
+      <div class="gratitude-row">
+        <input class="ginput" id="j-g1" type="text" placeholder="Something small…" maxlength="60">
+        <input class="ginput" id="j-g2" type="text" placeholder="Something bigger…" maxlength="60">
+        <input class="ginput" id="j-g3" type="text" placeholder="Someone who helped…" maxlength="60">
+      </div>
+
+      <div class="jlabel">Today I…</div>
+      <div class="habits" id="j-habits" role="group" aria-label="Daily checklist"></div>
+
+      <div class="checkin-grid">
+        <div class="field"><label for="j-win">Today's win</label><input id="j-win" type="text" placeholder="One thing you're proud of" maxlength="80"></div>
+        <div class="field"><label for="j-challenge">What was hard</label><input id="j-challenge" type="text" placeholder="And that's okay" maxlength="80"></div>
+        <div class="field"><label for="j-forward">Looking forward to</label><input id="j-forward" type="text" placeholder="Something on the horizon" maxlength="80"></div>
+      </div>
+
+      <div class="jlabel">Reflect</div>
       <div class="promptline">
         <p class="q" id="j-prompt"></p>
         <button class="shuffle" id="j-shuffle">↻ New prompt</button>
       </div>
-      <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
-      <div class="jlabel">Today I…</div>
-      <div class="habits" id="j-habits" role="group" aria-label="Daily checklist"></div>
       <textarea id="j-text" placeholder="Write a little or a lot…"></textarea>
       <div class="actions">
         <span class="count" id="j-count"></span>
@@ -504,6 +533,11 @@ svg circle[data-cat]{cursor:pointer}
 
   <!-- ============ LIFE REVIEW ============ -->
   <main id="view-life" class="stack" hidden>
+    <section class="card">
+      <div class="card-h"><h3>Highlights</h3><span class="hint">grateful for &amp; wins, last 7 days</span></div>
+      <div class="chartbody" id="r-highlights"></div>
+    </section>
+
     <div class="charts">
       <section class="card">
         <div class="card-h"><h3>Habits</h3><span class="hint">last 7 days &amp; streaks</span></div>
@@ -539,6 +573,27 @@ svg circle[data-cat]{cursor:pointer}
     <button id="d-import">Import data</button>
   </footer>
 </div>
+
+<nav class="tabbar" aria-label="Sections">
+  <div class="tabbar-inner">
+    <button class="tabbtn" data-tab="spend" aria-current="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/></svg>
+      <span>Spending</span>
+    </button>
+    <button class="tabbtn" data-tab="journal" aria-current="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Journal</span>
+    </button>
+    <button class="tabbtn" data-tab="money" aria-current="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+      <span>Money</span>
+    </button>
+    <button class="tabbtn" data-tab="life" aria-current="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>
+      <span>Life</span>
+    </button>
+  </div>
+</nav>
 
 <div id="dlg-wrap" hidden>
   <div class="dlg-backdrop" id="dlg-backdrop"></div>
@@ -661,15 +716,16 @@ function hideTip(){ tip.style.opacity=0; }
 
 /* ---------- tabs ---------- */
 const views = {spend:$("#view-spend"), journal:$("#view-journal"), money:$("#view-money"), life:$("#view-life")};
-const tabSelect = $("#tab-select");
+const tabButtons = document.querySelectorAll(".tabbtn");
 function setTab(which){
   if (which==="review") which = "money";   // migrate old saved tab
   if (!views[which]) which = "spend";
-  tabSelect.value = which;
+  tabButtons.forEach(b=>b.setAttribute("aria-current", b.dataset.tab===which ? "true" : "false"));
   for (const k in views) views[k].hidden = k!==which;
   save("db_tab",which);
+  window.scrollTo(0,0);
 }
-tabSelect.onchange = ()=>setTab(tabSelect.value);
+tabButtons.forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 
 /* =====================================================
    SPENDING
@@ -1011,18 +1067,33 @@ jText.addEventListener("input", ()=>{
   $("#j-count").textContent = w ? `${w} word${w===1?"":"s"}` : "";
 });
 
+function checkinFields(){
+  return {
+    gratitude: [$("#j-g1"),$("#j-g2"),$("#j-g3")].map(i=>i.value.trim()).filter(Boolean),
+    win: $("#j-win").value.trim(),
+    challenge: $("#j-challenge").value.trim(),
+    forward: $("#j-forward").value.trim(),
+  };
+}
+function clearCheckin(){
+  ["j-g1","j-g2","j-g3","j-win","j-challenge","j-forward"].forEach(id=>$("#"+id).value="");
+}
+
 $("#j-save").onclick = ()=>{
   const text = jText.value.trim();
-  if (!text && !selMood && !selHabits.size){ jText.focus(); return; }
+  const {gratitude, win, challenge, forward} = checkinFields();
+  const hasAny = text || selMood || selHabits.size || gratitude.length || win || challenge || forward;
+  if (!hasAny){ jText.focus(); return; }
   if (editingEntry){
     const e = journal.find(x=>x.id===editingEntry);
-    if (e){ e.text=text; e.mood=selMood; e.habits=[...selHabits]; if(text && !e.prompt) e.prompt=curPrompt; }
+    if (e){ e.text=text; e.mood=selMood; e.habits=[...selHabits]; e.gratitude=gratitude; e.win=win; e.challenge=challenge; e.forward=forward; if(text && !e.prompt) e.prompt=curPrompt; }
     stopEditEntry();
   } else {
-    journal.push({id:uid(), date:selJDate, mood:selMood, habits:[...selHabits], prompt:text?curPrompt:"", text, ts:Date.now()});
+    journal.push({id:uid(), date:selJDate, mood:selMood, habits:[...selHabits], gratitude, win, challenge, forward, prompt:text?curPrompt:"", text, ts:Date.now()});
   }
   save("db_journal",journal);
   jText.value=""; $("#j-count").textContent="";
+  clearCheckin();
   selMood=0; renderMoodPicker();
   selHabits.clear(); renderHabitPicker();
   selJDate = todayIso(); renderDayPick(); updateJDateLabel();
@@ -1038,6 +1109,11 @@ function startEditEntry(id){
   jText.dispatchEvent(new Event("input"));
   selMood = e.mood || 0; renderMoodPicker();
   selHabits = new Set(e.habits || []); renderHabitPicker();
+  const g = e.gratitude || [];
+  $("#j-g1").value = g[0]||""; $("#j-g2").value = g[1]||""; $("#j-g3").value = g[2]||"";
+  $("#j-win").value = e.win || "";
+  $("#j-challenge").value = e.challenge || "";
+  $("#j-forward").value = e.forward || "";
   if (e.prompt){ curPrompt = e.prompt; $("#j-prompt").textContent = e.prompt; }
   $("#j-editing").hidden = false;
   $("#j-editing-label").textContent = `Editing your entry from ${dayLabel(e.date).toLowerCase()}`;
@@ -1054,6 +1130,7 @@ function stopEditEntry(){
 }
 $("#j-cancel").onclick = ()=>{
   jText.value=""; $("#j-count").textContent="";
+  clearCheckin();
   selMood=0; renderMoodPicker();
   selHabits.clear(); renderHabitPicker();
   stopEditEntry();
@@ -1104,12 +1181,17 @@ function renderFlash(){
   const parts = [];
   for (const [label,d] of targets){
     const e = journal.filter(x=>x.date===isoDate(d)).sort((a,b)=>b.ts-a.ts)[0];
-    if (!e || (!e.text && !e.mood)) continue;
+    if (!e || (!e.text && !e.mood && !(e.gratitude||[]).some(Boolean) && !e.win)) continue;
     const m = e.mood ? moodByN(e.mood) : null;
     const text = (e.text||"").length>240 ? esc(e.text.slice(0,240))+"…" : esc(e.text||"");
+    const extras = [];
+    const grats = (e.gratitude||[]).filter(Boolean);
+    if (grats.length) extras.push(`Grateful for ${grats.map(esc).join(", ")}`);
+    if (e.win) extras.push(`Win: ${esc(e.win)}`);
     parts.push(`<div class="flash">
       <div class="meta"><span class="d">${label} — ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}${d.getFullYear()!==now.getFullYear()?", "+d.getFullYear():""}</span>
       ${m?`<span class="moodchip"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}</div>
+      ${extras.length?`<div class="prompt-echo">${extras.join(" · ")}</div>`:""}
       ${text?`<div class="txt">${text}</div>`:""}</div>`);
   }
   $("#j-flash").hidden = !parts.length;
@@ -1191,7 +1273,9 @@ function renderList(){
   }
   if (query){
     const q = query.toLowerCase();
-    list = list.filter(e=> e.text.toLowerCase().includes(q) || (e.prompt||"").toLowerCase().includes(q) || dayLabel(e.date).toLowerCase().includes(q));
+    list = list.filter(e=> e.text.toLowerCase().includes(q) || (e.prompt||"").toLowerCase().includes(q) || dayLabel(e.date).toLowerCase().includes(q)
+      || (e.gratitude||[]).some(g=>g && g.toLowerCase().includes(q))
+      || (e.win||"").toLowerCase().includes(q) || (e.challenge||"").toLowerCase().includes(q) || (e.forward||"").toLowerCase().includes(q));
   }
   $("#j-listtitle").textContent = (query||jFilter) ? `${list.length} match${list.length===1?"":"es"}` : "Past entries";
 
@@ -1213,10 +1297,17 @@ function renderList(){
       const h = habitById(id);
       return h ? `<span class="habitchip" data-fh="${h.id}" title="Show all ${h.name} days"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>` : "";
     }).join("");
+    const ci = [];
+    const grats = (e.gratitude||[]).filter(Boolean);
+    if (grats.length) ci.push(`<div class="ci-row"><span class="ci-k">Grateful for</span>${grats.map(g=>highlight(esc(g),query)).join(" · ")}</div>`);
+    if (e.win) ci.push(`<div class="ci-row"><span class="ci-k">Win</span>${highlight(esc(e.win),query)}</div>`);
+    if (e.challenge) ci.push(`<div class="ci-row"><span class="ci-k">Hard part</span>${highlight(esc(e.challenge),query)}</div>`);
+    if (e.forward) ci.push(`<div class="ci-row"><span class="ci-k">Looking forward to</span>${highlight(esc(e.forward),query)}</div>`);
     return `<div class="jentry">
       <div class="body">
         <div class="meta"><span class="d">${dayLabel(e.date)}</span>${
           m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${habitChips}</div>
+        ${ci.join("")}
         ${e.prompt?`<div class="prompt-echo">${highlight(esc(e.prompt),query)}</div>`:""}
         ${e.text?`<div class="txt">${highlight(esc(e.text),query)}</div>`:""}
       </div>
@@ -1374,6 +1465,27 @@ function renderInsights(){
     : `<p class="ins-none">No strong patterns yet — they'll sharpen as you log more days.</p>`);
 }
 
+function renderHighlights(){
+  const el = $("#r-highlights");
+  if (!el) return;
+  const days = [];
+  for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(isoDate(d)); }
+  const entries = journal.filter(e=>days.includes(e.date)).sort((a,b)=>b.ts-a.ts);
+  const grats = [], wins = [];
+  entries.forEach(e=>{
+    (e.gratitude||[]).forEach(g=>{ if(g) grats.push({text:g, date:e.date}); });
+    if (e.win) wins.push({text:e.win, date:e.date});
+  });
+  if (!grats.length && !wins.length){
+    el.innerHTML = `<div class="empty">Log a gratitude or a win with your next entry and it'll show up here.</div>`;
+    return;
+  }
+  const group = (arr,label)=> arr.length ? `<div class="hl-group"><div class="hl-label">${label}</div>${
+    arr.slice(0,6).map(x=>`<div class="hl-item"><span>${esc(x.text)}</span><span class="hl-date">${dayLabel(x.date)}</span></div>`).join("")
+  }</div>` : "";
+  el.innerHTML = group(grats,"Grateful for") + group(wins,"Wins");
+}
+
 function renderMonthReview(){
   const now = new Date(), key = monthKey(now);
   $("#r-month-title").textContent = `${MONTHS_LONG[now.getMonth()]} so far`;
@@ -1423,6 +1535,7 @@ function buildMoneyReport(p){
   const total = sum(list);
   lines.push(`Total spent: ${fmt(total)} across ${list.length} entries`);
   lines.push(`Daily average: ${fmt(total/r.days)}`);
+  lines.push(`Days with spending: ${new Set(list.map(e=>e.date)).size} of ${r.days}`);
   const byCat = {};
   list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
   const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3)
@@ -1450,6 +1563,10 @@ function buildLifeReport(p){
     const counts = MOODS.filter(m=>moods.includes(m.n)).map(m=>`${m.label} ${moods.filter(x=>x===m.n).length}`);
     lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5 — ${counts.join(", ")}`);
   } else lines.push("Mood: not logged this period.");
+  const grats = [], wins = [];
+  entries.forEach(e=>{ (e.gratitude||[]).forEach(g=>{ if(g) grats.push(g); }); if (e.win) wins.push(e.win); });
+  if (grats.length) lines.push(`Grateful for: ${grats.slice(0,6).join(" · ")}`);
+  if (wins.length) lines.push(`Wins: ${wins.slice(0,6).join(" · ")}`);
   const habitCounts = HABITS.map(h=>{
     const days = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
     return days ? `${h.name} ${days}×` : null;
@@ -1503,7 +1620,7 @@ $("#ms-email").onclick = ()=>emailText(`Daybook spending report — ${periodRang
 $("#ls-email").onclick = ()=>emailText(`Daybook journal report — ${periodRange(lsPeriod).label}`, $("#ls-text").textContent);
 
 function renderReview(){
-  renderBudgets(); renderHabitStats(); renderInsights(); renderMonthReview(); renderReports();
+  renderBudgets(); renderHabitStats(); renderInsights(); renderMonthReview(); renderReports(); renderHighlights();
 }
 $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 
