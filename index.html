@@ -299,6 +299,18 @@ svg circle[data-cat]{cursor:pointer}
 .todo-row:hover .todo-del, .todo-del:focus-visible{opacity:1}
 .todo-del:hover{color:var(--bad); background:var(--surface-2)}
 
+/* ---------- habit editor ---------- */
+.jlabel-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:7px}
+.hedit-btn{color:var(--accent); font-size:12px; font-weight:600; padding:3px 10px; border:1px solid var(--hairline); border-radius:999px}
+.hedit-btn:hover{border-color:var(--accent)}
+.habit.editable{cursor:default; padding-right:6px}
+.habit .hx{color:var(--ink-3); width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:12px; margin-left:2px}
+.habit .hx:hover{color:var(--bad); background:var(--surface-2)}
+.hadd{display:flex; gap:8px; margin:0 0 14px}
+.hadd input{flex:1; min-width:0; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:9px 11px}
+.hadd input:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.hadd input:disabled{opacity:.55}
+
 /* ---------- guided check-in ---------- */
 .checkin-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:4px 0 16px}
 .ci-row{font-size:13px; color:var(--ink-2); margin-top:5px; line-height:1.5}
@@ -343,6 +355,39 @@ svg circle[data-cat]{cursor:pointer}
 .h7 i.on{background:var(--c); border-color:transparent}
 .hnum{width:30px; text-align:right; font-weight:600}
 .hstreak{color:var(--ink-3); font-size:11.5px; width:104px; text-align:right; flex:0 0 auto}
+
+/* ---------- review: trends ---------- */
+.trow{padding:12px 0 2px}
+.trow + .trow{border-top:1px solid var(--hairline); margin-top:10px}
+.trow .t-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:13.5px}
+.trow .t-name{color:var(--ink-2); font-weight:600}
+.trow .t-main{font-weight:600}
+.trow .t-sub{font-size:12.5px; color:var(--ink-3); margin-top:3px}
+
+/* ---------- review: month in pixels ---------- */
+.pix-nav{display:inline-flex; align-items:center; gap:6px}
+.pix-nav .navbtn{width:26px; height:26px; font-size:13px}
+.pix-nav .cal-mlabel{font-size:12.5px; min-width:74px; text-align:center}
+.pix-dow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:9.5px; color:var(--ink-3); font-weight:600; margin:10px 0 4px; gap:3px}
+.pix-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
+.pix-cell{aspect-ratio:1; border-radius:5px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:transparent}
+.pix-cell.pad{visibility:hidden}
+.pix-cell.none{background:transparent; border:1px solid var(--hairline)}
+.pix-cell.future{background:transparent; border:1px dashed var(--hairline); opacity:.5}
+.pix-legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:12px; font-size:11.5px; color:var(--ink-2)}
+.pix-legend .li{display:inline-flex; align-items:center; gap:5px}
+.pix-legend .sw{width:10px; height:10px; border-radius:3px}
+
+/* ---------- review: poop health ---------- */
+.ph-line{font-size:13.5px; margin-top:12px}
+.ph-line .num{font-weight:600}
+.ph-bar{display:flex; height:12px; border-radius:99px; overflow:hidden; margin:12px 0 8px; background:var(--surface-2)}
+.ph-bar i{display:block; height:100%}
+.ph-bar i + i{border-left:2px solid var(--surface)}
+.ph-legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:11.5px; color:var(--ink-2)}
+.ph-legend .li{display:inline-flex; align-items:center; gap:5px}
+.ph-legend .dot{width:7px; height:7px; border-radius:50%}
+.ph-note{font-size:12.5px; color:var(--ink-2); margin-top:10px; padding-top:10px; border-top:1px solid var(--hairline)}
 
 /* ---------- review: insights & recap ---------- */
 .mdist{display:flex; gap:14px; align-items:flex-end; padding:12px 2px 4px}
@@ -544,8 +589,15 @@ svg circle[data-cat]{cursor:pointer}
         <input id="j-g1" type="text" placeholder="What are you grateful for today?" maxlength="80">
       </div>
 
-      <div class="jlabel">Today I…</div>
+      <div class="jlabel-row">
+        <span class="jlabel" style="margin-bottom:0">Today I…</span>
+        <button class="hedit-btn" id="h-edit" type="button">Edit</button>
+      </div>
       <div class="habits" id="j-habits" role="group" aria-label="Daily checklist"></div>
+      <div class="hadd" id="h-addrow" hidden>
+        <input id="h-input" type="text" placeholder="Add a habit…" maxlength="40">
+        <button class="btn ghost" id="h-add-btn" type="button">Add</button>
+      </div>
 
       <div class="checkin-grid">
         <div class="field"><label for="j-win">Today's win</label><input id="j-win" type="text" placeholder="One thing you're proud of" maxlength="80"></div>
@@ -601,6 +653,11 @@ svg circle[data-cat]{cursor:pointer}
     </section>
 
     <section class="card">
+      <div class="card-h"><h3>Am I doing better?</h3><span class="hint">vs the period before</span></div>
+      <div class="chartbody" id="r-trends"></div>
+    </section>
+
+    <section class="card">
       <div class="card-h"><h3 id="r-month-title">This month</h3><span class="hint">a quick recap</span></div>
       <div class="chartbody" id="r-month"></div>
     </section>
@@ -629,6 +686,24 @@ svg circle[data-cat]{cursor:pointer}
       <div class="card-h"><h3>Highlights</h3><span class="hint">grateful for &amp; wins, last 7 days</span></div>
       <div class="chartbody" id="r-highlights"></div>
     </section>
+
+    <div class="charts">
+      <section class="card">
+        <div class="card-h">
+          <h3>Month in pixels</h3>
+          <span class="pix-nav">
+            <button class="navbtn" id="pix-prev" aria-label="Previous month" type="button">‹</button>
+            <span class="cal-mlabel" id="pix-mlabel"></span>
+            <button class="navbtn" id="pix-next" aria-label="Next month" type="button">›</button>
+          </span>
+        </div>
+        <div class="chartbody" id="r-pixels"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h3>Poop health</h3><span class="hint">last 14 days</span></div>
+        <div class="chartbody" id="r-poophealth"></div>
+      </section>
+    </div>
 
     <div class="charts">
       <section class="card">
@@ -748,13 +823,11 @@ const MOODS = [
   {n:4,label:"Good", v:"--mood-4"},
   {n:5,label:"Great",v:"--mood-5"},
 ];
-const moodByN = n => MOODS.find(m=>m.n===n);
+const MOOD_LEGACY = {2:{n:2,label:"Low",v:"--mood-2"}};   // removed from picker, kept for old entries
+const moodByN = n => MOODS.find(m=>m.n===n) || MOOD_LEGACY[n];
 
-const HABITS = [
-  {id:"exercise", name:"Exercised",      v:"--cat-1"},
-  {id:"read",     name:"Read a book",    v:"--cat-3"},
-];
-const habitById = id => HABITS.find(h=>h.id===id);
+const HABIT_COLORS = ["--cat-1","--cat-3","--cat-5","--cat-2","--cat-8","--cat-6","--cat-7","--cat-4"];
+const MAX_HABITS = 8;
 
 const POOPS = [
   {id:"hard",   label:"Hard",   v:"--mood-2"},
@@ -793,6 +866,25 @@ let poops    = load("db_poops",[]);      // {id, date, type, ts}
 let todos    = load("db_todos",[]);      // {id, date, text, done, ts}
 let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop"|"todo", item, delAt}
 let userEmail = load("db_email","");
+
+let habits = load("db_habits", null);    // {id, name, v, removed?}
+if (!habits){
+  habits = [
+    {id:"exercise", name:"Exercised",      v:"--cat-1"},
+    {id:"read",     name:"Read a book",    v:"--cat-3"},
+    // legacy habits kept so old entries still display; hidden from the picker & stats
+    {id:"meditate", name:"Meditated",      v:"--cat-5", removed:true},
+    {id:"walk",     name:"Walked outside", v:"--cat-2", removed:true},
+    {id:"sleep",    name:"Slept well",     v:"--cat-8", removed:true},
+  ];
+  save("db_habits", habits);
+}
+const activeHabits = () => habits.filter(h=>!h.removed);
+const habitById = id => habits.find(h=>h.id===id);
+function nextHabitColor(){
+  const used = activeHabits().map(h=>h.v);
+  return HABIT_COLORS.find(c=>!used.includes(c)) || HABIT_COLORS[activeHabits().length % HABIT_COLORS.length];
+}
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -1262,15 +1354,51 @@ function renderMoodPicker(){
 }
 
 let selHabits = new Set();
+let habitEditMode = false;
+
 function renderHabitPicker(){
-  $("#j-habits").innerHTML = HABITS.map(h=>
-    `<button class="habit" data-h="${h.id}" aria-pressed="${selHabits.has(h.id)}"><span class="tick">✓</span>${h.name}</button>`).join("");
-  $("#j-habits").querySelectorAll(".habit").forEach(b=>b.onclick=()=>{
-    const id = b.dataset.h;
-    selHabits.has(id) ? selHabits.delete(id) : selHabits.add(id);
-    renderHabitPicker();
-  });
+  const act = activeHabits();
+  $("#h-edit").textContent = habitEditMode ? "Done" : "Edit";
+
+  if (habitEditMode){
+    $("#j-habits").innerHTML = act.map(h=>
+      `<span class="habit editable"><span class="dot" style="background:var(${h.v}); width:10px; height:10px; border-radius:50%"></span>${esc(h.name)}<button class="hx" data-hx="${h.id}" aria-label="Remove ${esc(h.name)}">×</button></span>`).join("");
+    $("#h-addrow").hidden = false;
+    const atCap = act.length >= MAX_HABITS;
+    $("#h-input").disabled = atCap;
+    $("#h-input").placeholder = atCap ? `${MAX_HABITS} max — remove one first` : "Add a habit…";
+    $("#h-add-btn").disabled = atCap;
+    $("#j-habits").querySelectorAll("[data-hx]").forEach(b=>b.onclick=()=>{
+      const h = habitById(b.dataset.hx);
+      if (h){ h.removed = true; selHabits.delete(h.id); save("db_habits",habits); }
+      renderHabitPicker(); renderJournal();
+    });
+  } else {
+    $("#h-addrow").hidden = true;
+    $("#j-habits").innerHTML = act.map(h=>
+      `<button class="habit" data-h="${h.id}" aria-pressed="${selHabits.has(h.id)}"><span class="tick">✓</span>${esc(h.name)}</button>`).join("");
+    $("#j-habits").querySelectorAll(".habit").forEach(b=>b.onclick=()=>{
+      const id = b.dataset.h;
+      selHabits.has(id) ? selHabits.delete(id) : selHabits.add(id);
+      renderHabitPicker();
+    });
+  }
 }
+
+function addHabit(){
+  const name = $("#h-input").value.trim();
+  if (!name || activeHabits().length >= MAX_HABITS) return;
+  const revived = habits.find(h=>h.removed && h.name.toLowerCase()===name.toLowerCase());
+  if (revived){ revived.removed = false; }
+  else if (habits.some(h=>!h.removed && h.name.toLowerCase()===name.toLowerCase())){ $("#h-input").value=""; return; }
+  else habits.push({id:uid(), name, v:nextHabitColor()});
+  save("db_habits",habits);
+  $("#h-input").value = "";
+  renderHabitPicker(); renderJournal();
+}
+$("#h-edit").onclick = ()=>{ habitEditMode = !habitEditMode; renderHabitPicker(); };
+$("#h-add-btn").onclick = addHabit;
+$("#h-input").addEventListener("keydown", e=>{ if(e.key==="Enter") addHabit(); });
 
 const jText = $("#j-text");
 jText.addEventListener("input", ()=>{
@@ -1360,14 +1488,14 @@ function renderStrip(){
   $("#strip").innerHTML = days.map(day=>{
     const e = latestMood[day], d = parseIso(day);
     const m = e && moodByN(e.mood);
-    const done = HABITS.filter(h=>dayHabits[day]?.has(h.id));
+    const done = habits.filter(h=>dayHabits[day]?.has(h.id));
     return `<div class="sday${day===todayIso()?" today":""}" data-day="${day}" data-mood="${m?m.label:""}"
       data-habits="${done.map(h=>h.name).join(", ")}">
       <span class="b${m?" has":""}" style="${m?`background:var(${m.v})`:""}"></span>
       <span class="hdots">${done.map(h=>`<i style="background:var(${h.v})"></i>`).join("")}</span>
       <span class="l">${d.getDate()}</span></div>`;
   }).join("");
-  $("#strip-legend").innerHTML = HABITS.map(h=>
+  $("#strip-legend").innerHTML = activeHabits().map(h=>
     `<span class="li"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>`).join("");
 
   const logged = Object.keys(latestMood).filter(d=>days.includes(d)).length;
@@ -1614,12 +1742,12 @@ function renderBudgets(){
 function renderHabitStats(){
   const el = $("#r-habits");
   const dayH = dayHabitSets();
-  if (!Object.keys(dayH).length){
+  if (!Object.keys(dayH).length || !activeHabits().length){
     el.innerHTML = `<div class="empty">Tick habits with your journal entries and streaks will show up here.</div>`;
     return;
   }
   const last7 = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-6+i); return isoDate(d); });
-  el.innerHTML = HABITS.map(h=>{
+  el.innerHTML = activeHabits().map(h=>{
     const dots = last7.map(d=>`<i class="${dayH[d]?.has(h.id)?"on":""}" style="--c:var(${h.v})"></i>`).join("");
     const n7 = last7.filter(d=>dayH[d]?.has(h.id)).length;
     let cur=0, best=0, run=0, prev=null;
@@ -1658,7 +1786,7 @@ function renderInsights(){
   const sentences = [];
   const dayH = dayHabitSets();
   const effects = [];
-  for (const h of HABITS){
+  for (const h of activeHabits()){
     const w=[], wo=[];
     for (const d of moodDays) (dayH[d]?.has(h.id)?w:wo).push(dayMood[d]);
     if (w.length>=3 && wo.length>=3) effects.push({h, diff:avg(w)-avg(wo)});
@@ -1704,6 +1832,115 @@ function renderHighlights(){
   el.innerHTML = group(grats,"Grateful for") + group(wins,"Wins");
 }
 
+/* --- money trends: am I doing better? --- */
+function catMovers(curL, prevL, n){
+  const d = {};
+  curL.forEach(e=>d[e.cat]=(d[e.cat]||0)+e.amt);
+  prevL.forEach(e=>d[e.cat]=(d[e.cat]||0)-e.amt);
+  return Object.entries(d).filter(([,v])=>Math.abs(v)>=1)
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,n||2)
+    .map(([id,v])=>`${catById(id).name} ${v>0?"+":"−"}${fmt(Math.abs(v))}`).join(" · ");
+}
+function daysAgoIso(n){ const d=new Date(); d.setDate(d.getDate()-n); return isoDate(d); }
+
+function renderMoneyTrends(){
+  const el = $("#r-trends");
+  const wCur  = expenses.filter(e=>e.date>=daysAgoIso(6)  && e.date<=todayIso());
+  const wPrev = expenses.filter(e=>e.date>=daysAgoIso(13) && e.date<=daysAgoIso(7));
+  const now = new Date();
+  const mCur = monthExpenses(monthKey(now));
+  const prevM = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const dimPrev = new Date(prevM.getFullYear(), prevM.getMonth()+1, 0).getDate();
+  const capIso = `${prevM.getFullYear()}-${pad(prevM.getMonth()+1)}-${pad(Math.min(now.getDate(), dimPrev))}`;
+  const mPrev = monthExpenses(monthKey(prevM)).filter(e=>e.date<=capIso);
+
+  if (!wCur.length && !wPrev.length && !mCur.length && !mPrev.length){
+    el.innerHTML = `<div class="empty">Log spending across two weeks and the comparison appears here.</div>`;
+    return;
+  }
+  const row = (name, curL, prevL, prevLabel)=>{
+    const c = sum(curL), p = sum(prevL);
+    if (!prevL.length){
+      return `<div class="trow"><div class="t-top"><span class="t-name">${name}</span><span class="t-main num">${fmt(c)}</span></div>
+        <div class="t-sub">nothing to compare against yet</div></div>`;
+    }
+    const diff = c - p;
+    const chip = Math.abs(diff)<0.005 ? `<span class="hint">even</span>`
+      : `<span class="${diff>0?"delta-up":"delta-down"}">${diff>0?"▲":"▼"} ${fmt(Math.abs(diff))}</span>`;
+    const movers = catMovers(curL, prevL);
+    return `<div class="trow"><div class="t-top"><span class="t-name">${name}</span><span class="t-main num">${fmt(c)} ${chip}</span></div>
+      <div class="t-sub">${prevLabel}: ${fmt(p)}${movers?` — mostly ${movers}`:""}</div></div>`;
+  };
+  el.innerHTML =
+    row("Last 7 days", wCur, wPrev, "the 7 days before") +
+    row(`${MONTHS_SHORT[now.getMonth()]} so far`, mCur, mPrev, `same point in ${MONTHS_SHORT[prevM.getMonth()]}`);
+}
+
+/* --- month in pixels --- */
+let pixMonth = new Date(); pixMonth.setDate(1);
+function renderPixels(){
+  $("#pix-mlabel").textContent = `${MONTHS_SHORT[pixMonth.getMonth()]} ${pixMonth.getFullYear()}`;
+  $("#pix-next").disabled = monthKey(pixMonth) >= monthKey(new Date());
+  const dayMood = {}, mts = {};
+  journal.forEach(e=>{ if (e.mood && (!mts[e.date] || e.ts>mts[e.date])){ dayMood[e.date]=e.mood; mts[e.date]=e.ts; } });
+  const off = (new Date(pixMonth.getFullYear(), pixMonth.getMonth(), 1).getDay()+6)%7;
+  const dim = new Date(pixMonth.getFullYear(), pixMonth.getMonth()+1, 0).getDate();
+  const todayI = todayIso();
+  let cells = "";
+  for (let i=0;i<off;i++) cells += `<div class="pix-cell pad"></div>`;
+  for (let d=1; d<=dim; d++){
+    const iso = `${pixMonth.getFullYear()}-${pad(pixMonth.getMonth()+1)}-${pad(d)}`;
+    const m = dayMood[iso] ? moodByN(dayMood[iso]) : null;
+    let cls = "pix-cell", style = "";
+    if (iso>todayI) cls += " future";
+    else if (m) style = `background:var(${m.v})`;
+    else cls += " none";
+    cells += `<div class="${cls}" style="${style}" data-pix="${iso}" data-pm="${m?m.label:"no entry"}"></div>`;
+  }
+  $("#r-pixels").innerHTML =
+    `<div class="pix-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+     <div class="pix-grid">${cells}</div>
+     <div class="pix-legend">${MOODS.map(m=>`<span class="li"><span class="sw" style="background:var(${m.v})"></span>${m.label}</span>`).join("")}</div>`;
+  $("#r-pixels").querySelectorAll("[data-pix]").forEach(c=>{
+    c.addEventListener("mousemove", e=>{
+      const d = parseIso(c.dataset.pix);
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${c.dataset.pm}</span>`, e.clientX, e.clientY);
+    });
+    c.addEventListener("mouseleave", hideTip);
+  });
+}
+$("#pix-prev").onclick = ()=>{ pixMonth.setMonth(pixMonth.getMonth()-1); renderPixels(); };
+$("#pix-next").onclick = ()=>{ if(!$("#pix-next").disabled){ pixMonth.setMonth(pixMonth.getMonth()+1); renderPixels(); } };
+
+/* --- poop health --- */
+function renderPoopHealth(){
+  const el = $("#r-poophealth");
+  const days = [...Array(14)].map((_,i)=>daysAgoIso(13-i));
+  const inWin = poops.filter(p=>days.includes(p.date));
+  if (!inWin.length){
+    el.innerHTML = `<div class="empty">Log a few poops and your regularity picture shows up here.</div>`;
+    return;
+  }
+  const wentDays = new Set(inWin.map(p=>p.date));
+  let gap = 0, maxGap = 0;
+  days.forEach(d=>{ if (wentDays.has(d)) gap = 0; else { gap++; maxGap = Math.max(maxGap, gap); } });
+  const counts = POOPS.map(t=>({t, n:inWin.filter(p=>p.type===t.id).length})).filter(x=>x.n);
+  const total = inWin.length;
+  const bar = counts.map(x=>`<i style="width:${(x.n/total*100).toFixed(1)}%; background:var(${x.t.v})"></i>`).join("");
+  const legend = counts.map(x=>`<span class="li"><span class="dot" style="background:var(${x.t.v})"></span>${x.t.label} ${x.n}</span>`).join("");
+  const irr = list => poops.filter(p=>list.includes(p.date) && (p.type==="hard"||p.type==="loose")).length;
+  const a = irr(days.slice(7)), b = irr(days.slice(0,7));
+  let note;
+  if (a>=b+2) note = "Hard/Loose days are trending up vs the week before — worth keeping an eye on.";
+  else if (a===0 && b===0) note = "No Hard or Loose days in two weeks — looking good.";
+  else note = `Hard/Loose days: ${a} this week vs ${b} the week before.`;
+  el.innerHTML =
+    `<div class="ph-line">Went on <span class="num">${wentDays.size} of 14</span> days · longest gap <span class="num">${maxGap}</span> day${maxGap===1?"":"s"}</div>
+     <div class="ph-bar">${bar}</div>
+     <div class="ph-legend">${legend}</div>
+     <div class="ph-note">${note}</div>`;
+}
+
 function renderMonthReview(){
   const now = new Date(), key = monthKey(now);
   $("#r-month-title").textContent = `${MONTHS_LONG[now.getMonth()]} so far`;
@@ -1745,6 +1982,24 @@ function periodRange(p){
   return { match: iso => iso.startsWith(key), days: now.getDate(), label: `${MONTHS_LONG[now.getMonth()]} ${now.getFullYear()} (so far)` };
 }
 
+function periodPrev(p){
+  const now = new Date();
+  if (p==="week"){
+    return {
+      match: iso => iso>=daysAgoIso(13) && iso<=daysAgoIso(7),
+      label: "the previous 7 days",
+    };
+  }
+  const prevM = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const dimPrev = new Date(prevM.getFullYear(), prevM.getMonth()+1, 0).getDate();
+  const capIso = `${prevM.getFullYear()}-${pad(prevM.getMonth()+1)}-${pad(Math.min(now.getDate(), dimPrev))}`;
+  const key = monthKey(prevM);
+  return {
+    match: iso => iso.startsWith(key) && iso<=capIso,
+    label: `same point in ${MONTHS_SHORT[prevM.getMonth()]}`,
+  };
+}
+
 function buildMoneyReport(p){
   const r = periodRange(p);
   const list = expenses.filter(e=>r.match(e.date));
@@ -1754,6 +2009,13 @@ function buildMoneyReport(p){
   lines.push(`Total spent: ${fmt(total)} across ${list.length} entries`);
   lines.push(`Daily average: ${fmt(total/r.days)}`);
   lines.push(`Days with spending: ${new Set(list.map(e=>e.date)).size} of ${r.days}`);
+  const prev = periodPrev(p);
+  const prevList = expenses.filter(e=>prev.match(e.date));
+  if (prevList.length){
+    const diff = total - sum(prevList);
+    const movers = catMovers(list, prevList);
+    lines.push(`vs ${prev.label}: ${diff>=0?"up":"down"} ${fmt(Math.abs(diff))} (was ${fmt(sum(prevList))})${movers?` — mostly ${movers}`:""}`);
+  }
   const byCat = {};
   list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
   const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3)
@@ -1779,13 +2041,18 @@ function buildLifeReport(p){
   lines.push(`Entries: ${entries.length}${entries.length?` across ${new Set(entries.map(e=>e.date)).size} days`:""}`);
   if (moods.length){
     const counts = MOODS.filter(m=>moods.includes(m.n)).map(m=>`${m.label} ${moods.filter(x=>x===m.n).length}`);
-    lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5 — ${counts.join(", ")}`);
+    const prev = periodPrev(p);
+    const prevMood = {}, prevTs = {};
+    journal.filter(e=>prev.match(e.date)).forEach(e=>{ if (e.mood && (!prevTs[e.date] || e.ts>prevTs[e.date])){ prevMood[e.date]=e.mood; prevTs[e.date]=e.ts; } });
+    const pm = Object.values(prevMood);
+    const cmp = pm.length ? (avg(moods)>avg(pm)+0.05 ? ` (up from ${avg(pm).toFixed(1)})` : avg(moods)<avg(pm)-0.05 ? ` (down from ${avg(pm).toFixed(1)})` : ` (steady vs ${prev.label})`) : "";
+    lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5${cmp} — ${counts.join(", ")}`);
   } else lines.push("Mood: not logged this period.");
   const grats = [], wins = [];
   entries.forEach(e=>{ (e.gratitude||[]).forEach(g=>{ if(g) grats.push(g); }); if (e.win) wins.push(e.win); });
   if (grats.length) lines.push(`Grateful for: ${grats.slice(0,6).join(" · ")}`);
   if (wins.length) lines.push(`Wins: ${wins.slice(0,6).join(" · ")}`);
-  const habitCounts = HABITS.map(h=>{
+  const habitCounts = habits.map(h=>{
     const days = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
     return days ? `${h.name} ${days}×` : null;
   }).filter(Boolean);
@@ -1838,7 +2105,8 @@ $("#ms-email").onclick = ()=>emailText(`Daybook spending report — ${periodRang
 $("#ls-email").onclick = ()=>emailText(`Daybook journal report — ${periodRange(lsPeriod).label}`, $("#ls-text").textContent);
 
 function renderReview(){
-  renderBudgets(); renderHabitStats(); renderInsights(); renderMonthReview(); renderReports(); renderHighlights();
+  renderBudgets(); renderMoneyTrends(); renderHabitStats(); renderInsights(); renderMonthReview();
+  renderReports(); renderHighlights(); renderPixels(); renderPoopHealth();
 }
 $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 
@@ -1958,7 +2226,7 @@ function openDlg(mode){
   if (mode === "export"){
     dlg.title.textContent = "Export data";
     dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, to-dos, budgets. Copy it, then Import it on your other device.";
-    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, todos}, null, 2);
+    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, todos, habits}, null, 2);
     dlg.text.readOnly = true;
     dlg.primary.textContent = "Copy to clipboard";
     dlg.download.hidden = inNativeApp;
@@ -2054,6 +2322,11 @@ dlg.primary.onclick = async ()=>{
     const tm = mergeById(todos, okT);
     todos = tm.list; tAdded = tm.added;
     save("db_todos",todos);
+  }
+  if (Array.isArray(data.habits)){
+    const okH = data.habits.filter(x=>x && typeof x.id==="string" && typeof x.name==="string");
+    const hm = mergeById(habits, okH);
+    if (hm.added){ habits = hm.list; save("db_habits",habits); }
   }
   if (data.budgets && typeof data.budgets==="object" && !Array.isArray(data.budgets)){
     budgets = {...data.budgets, ...budgets};   // local values win on conflict
