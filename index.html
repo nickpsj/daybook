@@ -243,11 +243,32 @@ svg circle[data-cat]{cursor:pointer}
 .moodchip[data-fm]:hover, .habitchip[data-fh]:hover{box-shadow:0 0 0 1px var(--accent) inset}
 
 /* ---------- composer extras ---------- */
-.jdate-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.jdate-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; position:relative}
 .streak{font-size:12px; color:var(--accent); font-weight:600}
 .editing-bar{margin-top:10px; font-size:12.5px; color:var(--ink-2); background:var(--accent-soft); border-radius:8px; padding:7px 11px; display:flex; align-items:center; gap:10px}
 .editing-bar button{color:var(--accent); font-weight:600; font-size:12.5px}
 .editing-bar button:hover{text-decoration:underline}
+
+/* ---------- calendar dropdown ---------- */
+.jdate-toggle{display:inline-flex; align-items:baseline; gap:4px; cursor:pointer}
+.jdate-toggle .jdate-caret{width:12px; height:12px; color:var(--ink-3); align-self:center; transition:transform .15s, color .15s}
+.jdate-toggle:hover .jdate, .jdate-toggle:hover .jdate-caret{color:var(--accent)}
+.jdate-toggle[aria-expanded="true"] .jdate-caret{transform:rotate(180deg); color:var(--accent)}
+.jdate-toggle.disabled{pointer-events:none; opacity:.6}
+.calpop-backdrop{position:fixed; inset:0; z-index:29; background:transparent}
+.calpop{position:absolute; top:calc(100% + 8px); left:0; z-index:30; width:min(300px,100%);
+  background:var(--surface); border:1px solid var(--hairline); border-radius:12px; box-shadow:var(--shadow); padding:12px}
+.calpop-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+.cal-mlabel{font-weight:600; font-size:14px}
+.cal-dow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:10px; color:var(--ink-3); font-weight:600; margin-bottom:4px}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
+.cal-cell{aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:8px; font-size:12.5px; color:var(--ink-2)}
+.cal-cell.pad{visibility:hidden}
+.cal-cell:not(.pad):hover{background:var(--surface-2)}
+.cal-cell.today{color:var(--accent); font-weight:700}
+.cal-cell.sel{background:var(--accent-soft); color:var(--ink); font-weight:600}
+.cal-cell .cdot{width:4px; height:4px; border-radius:50%; background:transparent}
+.cal-cell .cdot.show{background:var(--accent)}
 
 /* ---------- week navigator ---------- */
 .weeknav{display:flex; align-items:center; gap:4px; margin-top:10px}
@@ -481,9 +502,22 @@ svg circle[data-cat]{cursor:pointer}
   <main id="view-journal" class="stack" hidden>
     <section class="card composer" aria-label="Write an entry">
       <div class="jdate-row">
-        <div class="jdate" id="j-date"></div>
+        <button class="jdate-toggle" id="j-date-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+          <span class="jdate" id="j-date"></span>
+          <svg class="jdate-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
         <span class="streak" id="j-streak"></span>
+        <div class="calpop" id="calpop" hidden>
+          <div class="calpop-head">
+            <button class="navbtn" id="cal-prev" aria-label="Previous month" type="button">‹</button>
+            <span class="cal-mlabel" id="cal-mlabel"></span>
+            <button class="navbtn" id="cal-next" aria-label="Next month" type="button">›</button>
+          </div>
+          <div class="cal-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
       </div>
+      <div class="calpop-backdrop" id="calpop-backdrop" hidden></div>
       <div class="editing-bar" id="j-editing" hidden>
         <span id="j-editing-label"></span>
         <button id="j-cancel">Cancel</button>
@@ -1100,7 +1134,54 @@ function yesterdayIso(){ const d = new Date(); d.setDate(d.getDate()-1); return 
 function updateJDateLabel(){
   const iso = editingEntry ? (journal.find(e=>e.id===editingEntry)?.date || selJDate) : selJDate;
   $("#j-date").textContent = parseIso(iso).toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"});
+  $("#j-date-toggle").classList.toggle("disabled", !!editingEntry);
 }
+
+/* --- calendar dropdown --- */
+let calMonth = null;
+function openCalendar(){
+  if (editingEntry) return;
+  calMonth = parseIso(selJDate);
+  calMonth.setDate(1);
+  renderCalendar();
+  $("#calpop").hidden = false;
+  $("#calpop-backdrop").hidden = false;
+  $("#j-date-toggle").setAttribute("aria-expanded","true");
+}
+function closeCalendar(){
+  $("#calpop").hidden = true;
+  $("#calpop-backdrop").hidden = true;
+  $("#j-date-toggle").setAttribute("aria-expanded","false");
+}
+function renderCalendar(){
+  $("#cal-mlabel").textContent = `${MONTHS_LONG[calMonth.getMonth()]} ${calMonth.getFullYear()}`;
+  const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  const startOffset = (first.getDay()+6)%7;
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0).getDate();
+  const todoOpen = {};
+  todos.forEach(t=>{ if(!t.done) todoOpen[t.date]=true; });
+  let cells = "";
+  for (let i=0;i<startOffset;i++) cells += `<div class="cal-cell pad">0</div>`;
+  for (let d=1; d<=daysInMonth; d++){
+    const iso = `${calMonth.getFullYear()}-${pad(calMonth.getMonth()+1)}-${pad(d)}`;
+    const cls = ["cal-cell"];
+    if (iso===todayIso()) cls.push("today");
+    if (iso===selJDate) cls.push("sel");
+    cells += `<button class="${cls.join(" ")}" type="button" data-cd="${iso}">${d}<span class="cdot${todoOpen[iso]?" show":""}"></span></button>`;
+  }
+  $("#cal-grid").innerHTML = cells;
+  $("#cal-grid").querySelectorAll("[data-cd]").forEach(b=>b.onclick=()=>{
+    selJDate = b.dataset.cd;
+    weekStart = mondayOf(parseIso(selJDate));
+    closeCalendar();
+    renderWeekNav(); updateJDateLabel(); renderTodos();
+  });
+}
+$("#cal-prev").onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()-1); renderCalendar(); };
+$("#cal-next").onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()+1); renderCalendar(); };
+$("#j-date-toggle").onclick = ()=>{ $("#calpop").hidden ? openCalendar() : closeCalendar(); };
+$("#calpop-backdrop").onclick = closeCalendar;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("#calpop").hidden) closeCalendar(); });
 
 /* --- week navigator --- */
 function renderWeekNav(){
@@ -1119,11 +1200,10 @@ function renderWeekNav(){
     selJDate = b.dataset.d; renderWeekNav(); updateJDateLabel(); renderTodos();
   });
   const isCurrentWeek = weekStart.getTime()===mondayOf(new Date()).getTime();
-  $("#w-next").disabled = isCurrentWeek;
   $("#w-today").hidden = isCurrentWeek;
 }
 $("#w-prev").onclick = ()=>{ weekStart.setDate(weekStart.getDate()-7); renderWeekNav(); };
-$("#w-next").onclick = ()=>{ if($("#w-next").disabled) return; weekStart.setDate(weekStart.getDate()+7); renderWeekNav(); };
+$("#w-next").onclick = ()=>{ weekStart.setDate(weekStart.getDate()+7); renderWeekNav(); };
 $("#w-today").onclick = ()=>{ weekStart = mondayOf(new Date()); selJDate = todayIso(); renderWeekNav(); updateJDateLabel(); renderTodos(); };
 
 /* --- to-do list, scoped to the selected day --- */
