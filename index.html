@@ -1,0 +1,1634 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Daybook — spending & journal</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  --ground:#f6f8f6; --surface:#fdfdfc; --surface-2:#f0f3f0;
+  --ink:#151916; --ink-2:#565d58; --ink-3:#8a908b;
+  --hairline:#e2e6e2; --ring:rgba(21,25,22,.10);
+  --accent:#2e7d5b; --accent-ink:#ffffff; --accent-soft:rgba(46,125,91,.10);
+  --good:#006300; --bad:#c33636;
+  --grid:#e4e7e3; --baseline:#c4c9c4;
+  --cat-1:#2a78d6; --cat-2:#1baf7a; --cat-3:#eda100; --cat-4:#008300;
+  --cat-5:#4a3aa7; --cat-6:#e34948; --cat-7:#e87ba4; --cat-8:#eb6834;
+  --mood-1:#d03b3b; --mood-2:#ec835a; --mood-3:#898781; --mood-4:#1baf7a; --mood-5:#0ca30c;
+  --shadow:0 1px 2px rgba(21,25,22,.05), 0 4px 16px rgba(21,25,22,.05);
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --ground:#101312; --surface:#191d1b; --surface-2:#202522;
+    --ink:#f1f4f1; --ink-2:#b9c0ba; --ink-3:#848b85;
+    --hairline:#2a2f2c; --ring:rgba(255,255,255,.10);
+    --accent:#54b389; --accent-ink:#0d1410; --accent-soft:rgba(84,179,137,.14);
+    --good:#3dbb3d; --bad:#e66767;
+    --grid:#262b28; --baseline:#3a403c;
+    --cat-1:#3987e5; --cat-2:#199e70; --cat-3:#c98500; --cat-4:#008300;
+    --cat-5:#9085e9; --cat-6:#e66767; --cat-7:#d55181; --cat-8:#d95926;
+    --mood-2:#ec835a; --mood-4:#199e70;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="light"]{
+  --ground:#f6f8f6; --surface:#fdfdfc; --surface-2:#f0f3f0;
+  --ink:#151916; --ink-2:#565d58; --ink-3:#8a908b;
+  --hairline:#e2e6e2; --ring:rgba(21,25,22,.10);
+  --accent:#2e7d5b; --accent-ink:#ffffff; --accent-soft:rgba(46,125,91,.10);
+  --good:#006300; --bad:#c33636;
+  --grid:#e4e7e3; --baseline:#c4c9c4;
+  --cat-1:#2a78d6; --cat-2:#1baf7a; --cat-3:#eda100; --cat-4:#008300;
+  --cat-5:#4a3aa7; --cat-6:#e34948; --cat-7:#e87ba4; --cat-8:#eb6834;
+  --mood-1:#d03b3b; --mood-2:#ec835a; --mood-3:#898781; --mood-4:#1baf7a; --mood-5:#0ca30c;
+  --shadow:0 1px 2px rgba(21,25,22,.05), 0 4px 16px rgba(21,25,22,.05);
+}
+:root[data-theme="dark"]{
+  --ground:#101312; --surface:#191d1b; --surface-2:#202522;
+  --ink:#f1f4f1; --ink-2:#b9c0ba; --ink-3:#848b85;
+  --hairline:#2a2f2c; --ring:rgba(255,255,255,.10);
+  --accent:#54b389; --accent-ink:#0d1410; --accent-soft:rgba(84,179,137,.14);
+  --good:#3dbb3d; --bad:#e66767;
+  --grid:#262b28; --baseline:#3a403c;
+  --cat-1:#3987e5; --cat-2:#199e70; --cat-3:#c98500; --cat-4:#008300;
+  --cat-5:#9085e9; --cat-6:#e66767; --cat-7:#d55181; --cat-8:#d95926;
+  --mood-1:#d03b3b; --mood-2:#ec835a; --mood-3:#898781; --mood-4:#199e70; --mood-5:#0ca30c;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0; overflow-x:hidden}
+body{
+  background:var(--ground); color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:"Avenir Next","Avenir","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif; text-wrap:balance; margin:0}
+button{font:inherit; color:inherit; background:none; border:0; cursor:pointer}
+input,textarea,select{font:inherit; color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition:none!important; animation:none!important} }
+
+.app{max-width:960px; margin:0 auto; padding:20px 20px 72px}
+
+/* ---------- header ---------- */
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:6px 2px 22px; flex-wrap:wrap}
+.brand{display:flex; align-items:baseline; gap:10px}
+.brand h1{font-size:22px; font-weight:600; letter-spacing:-.01em}
+.brand .sub{color:var(--ink-3); font-size:13px}
+.tabsel{position:relative; display:inline-flex}
+.tabsel select{appearance:none; -webkit-appearance:none; background:var(--surface-2); border:1px solid var(--hairline); border-radius:999px; padding:8px 42px 8px 18px; font:inherit; font-weight:600; font-size:14px; color:var(--ink); cursor:pointer}
+.tabsel select:hover{border-color:var(--accent)}
+.tabsel::after{content:""; position:absolute; right:18px; top:50%; width:7px; height:7px; border-right:2px solid var(--accent); border-bottom:2px solid var(--accent); transform:translateY(-70%) rotate(45deg); pointer-events:none}
+
+/* ---------- cards ---------- */
+.card{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r); box-shadow:var(--shadow)}
+.card-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:16px 18px 0}
+.card-h h3{font-size:15px; font-weight:600}
+.card-h .hint{color:var(--ink-3); font-size:12.5px}
+.stack{display:flex; flex-direction:column; gap:16px}
+
+/* ---------- quick entry ---------- */
+.entry{padding:16px 18px 18px}
+.entry .row1{display:flex; gap:10px; flex-wrap:wrap}
+.field{display:flex; flex-direction:column; gap:5px}
+.field label{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.field input{background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:9px 11px}
+.field input:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.f-amt{width:132px}
+.f-amt input{font-size:17px; font-weight:600; font-variant-numeric:tabular-nums}
+.f-note{flex:1; min-width:180px}
+.f-date{width:158px}
+.chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:13px}
+.chip{display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:999px; border:1px solid var(--hairline); background:var(--ground); color:var(--ink-2); font-size:13.5px; transition:border-color .15s, background .15s}
+.chip .dot{width:9px; height:9px; border-radius:50%; background:var(--c)}
+.chip:hover{border-color:var(--ink-3)}
+.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--ink); font-weight:500}
+.entry .actions{display:flex; justify-content:flex-end; margin-top:14px; gap:8px}
+.btn{background:var(--accent); color:var(--accent-ink); font-weight:600; padding:9px 20px; border-radius:8px; font-size:14.5px; transition:filter .15s}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:none; color:var(--accent); border:1px solid var(--hairline); font-weight:500}
+.btn.ghost:hover{filter:none; border-color:var(--accent)}
+
+/* ---------- month nav ---------- */
+.monthnav{display:flex; align-items:center; gap:6px}
+.monthnav .mlabel{font-family:"Avenir Next","Avenir",system-ui,sans-serif; font-weight:600; font-size:17px; min-width:150px; text-align:center}
+.navbtn{width:32px; height:32px; border-radius:8px; border:1px solid var(--hairline); background:var(--surface); color:var(--ink-2); display:grid; place-items:center; font-size:15px}
+.navbtn:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+.navbtn:disabled{opacity:.35; cursor:default}
+.today-link{color:var(--accent); font-size:13px; font-weight:500; padding:4px 8px}
+.spendhead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px}
+.tile{padding:14px 16px}
+.tile .k{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.tile .v{font-size:24px; font-weight:600; margin-top:3px; letter-spacing:-.01em}
+.tile .s{font-size:12.5px; color:var(--ink-2); margin-top:2px}
+.delta-up{color:var(--bad); font-weight:600}
+.delta-down{color:var(--good); font-weight:600}
+
+/* ---------- charts ---------- */
+.charts{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:720px){ .charts{grid-template-columns:1fr} }
+.chartbody{padding:8px 18px 16px}
+.donut-wrap{display:flex; gap:18px; align-items:center; flex-wrap:wrap}
+.donut-wrap svg{flex:0 0 auto}
+.legend{flex:1; min-width:150px; display:flex; flex-direction:column; gap:6px; font-size:13px}
+.legend .li{display:flex; align-items:center; gap:8px}
+.legend .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.legend .nm{color:var(--ink-2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.legend .amt{font-variant-numeric:tabular-nums; font-weight:500}
+.empty{color:var(--ink-3); font-size:13.5px; padding:26px 8px; text-align:center}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+
+/* ---------- ledger ---------- */
+.ledger{padding:6px 0 8px}
+.dayhead{display:flex; justify-content:space-between; padding:12px 18px 4px; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.txn{display:flex; align-items:center; gap:12px; padding:9px 18px; border-top:1px solid var(--hairline)}
+.txn:hover{background:var(--surface-2)}
+.txn .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto}
+.txn .what{flex:1; min-width:0}
+.txn .note{font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.txn .cat{font-size:12px; color:var(--ink-3)}
+.txn .amt{font-weight:600; font-variant-numeric:tabular-nums}
+.txn .note mark, .jentry mark{background:var(--accent-soft); color:var(--accent); border-radius:3px; padding:0 1px}
+.del{color:var(--ink-3); font-size:15px; width:26px; height:26px; border-radius:6px; display:grid; place-items:center; opacity:0; transition:opacity .12s}
+.txn:hover .del, .jentry:hover .del, .del:focus-visible{opacity:1}
+.del:hover{color:var(--bad); background:var(--surface-2)}
+
+/* ---------- journal ---------- */
+.composer{padding:16px 18px 18px}
+.jdate{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.promptline{display:flex; align-items:flex-start; gap:10px; margin:8px 0 14px}
+.promptline .q{font-family:"Avenir Next","Avenir",system-ui,sans-serif; font-size:19px; font-weight:600; letter-spacing:-.01em; text-wrap:balance}
+.shuffle{color:var(--accent); font-size:12.5px; font-weight:600; padding:4px 9px; border:1px solid var(--hairline); border-radius:999px; white-space:nowrap; margin-top:3px}
+.shuffle:hover{border-color:var(--accent)}
+.moods{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+.mood{display:inline-flex; align-items:center; gap:7px; padding:6px 13px; border-radius:999px; border:1px solid var(--hairline); background:var(--ground); color:var(--ink-2); font-size:13.5px}
+.mood .dot{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.mood:hover{border-color:var(--ink-3)}
+.mood[aria-pressed="true"]{border-color:var(--c); background:color-mix(in srgb, var(--c) 12%, var(--surface)); color:var(--ink); font-weight:500}
+.jlabel{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-bottom:7px}
+.habits{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:14px}
+.habit{display:inline-flex; align-items:center; gap:8px; padding:6px 13px 6px 8px; border-radius:999px; border:1px solid var(--hairline); background:var(--ground); color:var(--ink-2); font-size:13.5px; transition:border-color .15s, background .15s}
+.habit .tick{width:17px; height:17px; border-radius:50%; border:1.5px solid var(--ink-3); display:grid; place-items:center; font-size:11px; font-weight:700; color:transparent; transition:background .15s, border-color .15s}
+.habit:hover{border-color:var(--ink-3)}
+.habit[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--ink); font-weight:500}
+.habit[aria-pressed="true"] .tick{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.habitchip{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:500; color:var(--accent); background:var(--accent-soft); padding:2px 9px; border-radius:999px}
+.habitchip .dot{width:7px; height:7px; border-radius:50%}
+.composer textarea{width:100%; min-height:110px; resize:vertical; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:11px 12px; line-height:1.6}
+.composer textarea:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.composer .actions{display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px}
+.composer .count{font-size:12.5px; color:var(--ink-3)}
+
+.strip{display:flex; gap:6px; padding:14px 18px 16px; flex-wrap:wrap}
+.sday{display:flex; flex-direction:column; align-items:center; gap:5px; width:34px}
+.sday .b{width:22px; height:22px; border-radius:50%; border:1.5px solid var(--hairline); background:transparent}
+.sday .b.has{border:0}
+.sday .l{font-size:10.5px; color:var(--ink-3)}
+.sday.today .l{color:var(--accent); font-weight:700}
+.sday .hdots{display:flex; gap:2px; height:5px; justify-content:center}
+.sday .hdots i{width:5px; height:5px; border-radius:50%}
+.hlegend{display:flex; flex-wrap:wrap; gap:6px 14px; padding:0 18px 15px; font-size:11.5px; color:var(--ink-2)}
+.hlegend .li{display:inline-flex; align-items:center; gap:5px}
+.hlegend .dot{width:7px; height:7px; border-radius:50%}
+
+.search{position:relative; flex:1; max-width:340px}
+.search input{width:100%; background:var(--surface); border:1px solid var(--hairline); border-radius:999px; padding:8px 14px 8px 34px}
+.search::before{content:""; position:absolute; left:12px; top:50%; width:13px; height:13px; transform:translateY(-62%);
+  border:1.8px solid var(--ink-3); border-radius:50%; box-sizing:border-box}
+.search::after{content:""; position:absolute; left:22px; top:60%; width:7px; height:1.8px; background:var(--ink-3); transform:rotate(45deg)}
+.jhead{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap}
+.jhead h2{font-size:17px; font-weight:600}
+
+.jentry{padding:14px 18px; border-top:1px solid var(--hairline); display:flex; gap:12px; align-items:flex-start}
+.jentry:first-of-type{border-top:0}
+.jentry .body{flex:1; min-width:0}
+.jentry .meta{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.jentry .d{font-weight:600; font-size:13.5px}
+.moodchip{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--ink-2); background:var(--surface-2); padding:2px 9px; border-radius:999px}
+.moodchip .dot{width:7px; height:7px; border-radius:50%}
+.jentry .prompt-echo{font-size:12px; color:var(--ink-3); font-style:italic; margin-top:2px}
+.jentry .txt{margin-top:5px; white-space:pre-wrap; overflow-wrap:break-word; color:var(--ink)}
+
+/* ---------- quick add & edit-in-place ---------- */
+.qadd{display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:14px}
+.qadd .qlabel{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-right:2px}
+.edit{color:var(--ink-3); font-size:12px; width:26px; height:26px; border-radius:6px; display:grid; place-items:center; opacity:0; transition:opacity .12s}
+.txn:hover .edit, .jentry:hover .edit, .edit:focus-visible{opacity:1}
+.edit:hover{color:var(--accent); background:var(--surface-2)}
+
+/* ---------- ledger notes & filters ---------- */
+.lnote{display:flex; align-items:center; gap:8px; padding:13px 18px 2px; font-size:12.5px; color:var(--ink-2); font-weight:500}
+.lclear{color:var(--ink-3); border:1px solid var(--hairline); border-radius:50%; width:18px; height:18px; display:grid; place-items:center; font-size:11px; line-height:1}
+.lclear:hover{color:var(--bad); border-color:var(--bad)}
+.legend .li[data-cat]{cursor:pointer; border-radius:6px}
+.legend .li[data-cat]:hover .nm{color:var(--ink)}
+.legend .li.sel .nm{color:var(--ink); font-weight:600}
+svg circle[data-cat]{cursor:pointer}
+.fpill{display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:600}
+.fpill:hover{text-decoration:line-through}
+.moodchip[data-fm], .habitchip[data-fh]{cursor:pointer}
+.moodchip[data-fm]:hover, .habitchip[data-fh]:hover{box-shadow:0 0 0 1px var(--accent) inset}
+
+/* ---------- composer extras ---------- */
+.jdate-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.streak{font-size:12px; color:var(--accent); font-weight:600}
+.daypick{margin-top:10px}
+.editing-bar{margin-top:10px; font-size:12.5px; color:var(--ink-2); background:var(--accent-soft); border-radius:8px; padding:7px 11px; display:flex; align-items:center; gap:10px}
+.editing-bar button{color:var(--accent); font-weight:600; font-size:12.5px}
+.editing-bar button:hover{text-decoration:underline}
+
+/* ---------- flashback ---------- */
+.flash{padding:13px 18px; border-top:1px solid var(--hairline)}
+.flash:first-child{border-top:0}
+.flash .d{font-weight:600; font-size:13.5px}
+.flash .meta{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.flash .txt{margin-top:4px; white-space:pre-wrap; overflow-wrap:break-word}
+
+/* ---------- review: budgets ---------- */
+.brow{display:flex; align-items:center; gap:8px; margin-top:13px; font-size:13.5px}
+.brow .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.brow .nm{flex:1; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.brow .bnum{font-weight:500}
+.bbar{height:7px; background:var(--surface-2); border-radius:99px; margin-top:5px; overflow:hidden}
+.bbar i{display:block; height:100%; background:var(--accent); border-radius:99px}
+.bbar i.over{background:var(--bad)}
+.proj{margin:14px 0 4px; font-size:13px; color:var(--ink-2)}
+.bgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px 18px; margin-top:12px}
+.bfield{display:flex; align-items:center; gap:8px; font-size:13.5px}
+.bfield .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.bfield .nm{flex:1; color:var(--ink-2)}
+.bfield input{width:92px; background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums}
+.bactions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+
+/* ---------- review: habits ---------- */
+.hrow{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px}
+.hrow .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.hrow .nm{flex:1; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.h7{display:flex; gap:3px}
+.h7 i{width:9px; height:9px; border-radius:50%; background:var(--surface-2); border:1px solid var(--hairline)}
+.h7 i.on{background:var(--c); border-color:transparent}
+.hnum{width:30px; text-align:right; font-weight:600}
+.hstreak{color:var(--ink-3); font-size:11.5px; width:104px; text-align:right; flex:0 0 auto}
+
+/* ---------- review: insights & recap ---------- */
+.mdist{display:flex; gap:14px; align-items:flex-end; padding:12px 2px 4px}
+.mcol{display:flex; flex-direction:column; align-items:center; gap:3px}
+.mbarwrap{height:48px; display:flex; align-items:flex-end}
+.mbar{width:16px; border-radius:4px 4px 2px 2px; min-height:2px}
+.mnum{font-size:11px; font-weight:600}
+.ml{font-size:10.5px; color:var(--ink-3)}
+.ins{margin:10px 0 4px; padding-left:18px; font-size:13.5px}
+.ins li{margin-top:6px}
+.ins-none{font-size:13px; color:var(--ink-3); margin:12px 0 4px}
+.facts{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; padding:12px 0 8px}
+.fact .k{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.fact .v{font-weight:600; margin-top:3px; display:flex; align-items:center; gap:7px}
+.fact .v .dot{width:9px; height:9px; border-radius:50%}
+.fact .s{font-size:12px; color:var(--ink-3); margin-top:1px; display:block}
+
+/* ---------- poop log ---------- */
+.ptoday{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:10px; font-size:13.5px; color:var(--ink-2)}
+.poopchip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-2); border-radius:999px; padding:4px 6px 4px 11px; font-size:12.5px; font-weight:500; color:var(--ink)}
+.poopchip .dot{width:8px; height:8px; border-radius:50%}
+.poopchip .t{color:var(--ink-3); font-size:11.5px}
+.poopchip .px{color:var(--ink-3); width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:11px}
+.poopchip .px:hover{color:var(--bad); background:var(--surface)}
+.pbuttons{margin-top:12px}
+.pstrip{padding:14px 0 2px}
+.pdots{display:flex; flex-direction:column-reverse; align-items:center; gap:2px; height:26px; justify-content:flex-start}
+.pdots i{width:8px; height:8px; border-radius:50%}
+.pdots .none{width:8px; height:8px; border-radius:50%; border:1.5px solid var(--hairline)}
+
+.emailrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-right:auto; min-width:0}
+.mailinput{background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:7px 10px; font-size:13.5px; width:200px; max-width:100%; min-width:0; text-transform:none; letter-spacing:normal; font-weight:400}
+.mailinput:focus{outline:2px solid var(--accent); outline-offset:-1px}
+
+/* ---------- summary reports ---------- */
+.sumtoggle{margin-top:0}
+.sumtoggle .chip{padding:5px 12px; font-size:12.5px}
+.sumtext{white-space:pre-wrap; overflow-wrap:break-word; font-size:13.5px; line-height:1.75; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:13px 15px; margin-top:12px}
+.sumactions{display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap}
+
+/* ---------- export / import ---------- */
+.datarow{display:flex; justify-content:center; align-items:center; gap:12px; margin-top:26px; color:var(--ink-3); font-size:13px}
+.datarow button{color:var(--ink-2); font-size:13px; padding:4px 6px; border-radius:6px}
+.datarow button:hover{color:var(--accent)}
+.dlg-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:60}
+.dlg{position:fixed; z-index:61; left:50%; top:50%; transform:translate(-50%,-50%); width:min(560px, calc(100vw - 32px)); max-height:min(640px, calc(100vh - 48px)); display:flex; flex-direction:column; padding:18px; gap:10px}
+.dlg h3{font-size:16px; font-weight:600}
+.dlg-sub{margin:0; font-size:13px; color:var(--ink-2)}
+.dlg textarea{flex:1; min-height:170px; resize:none; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:10px 11px; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink)}
+.dlg-status{font-size:13px; min-height:18px}
+.dlg-status.ok{color:var(--good)} .dlg-status.err{color:var(--bad)}
+.dlg-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.dlg-spring{flex:1}
+
+/* ---------- mobile ---------- */
+@media (max-width:560px){
+  .app{padding:12px 12px 56px}
+  input,select,textarea{font-size:16px}   /* prevents iOS focus zoom */
+  .topbar{padding-bottom:14px}
+  .brand h1{font-size:19px}
+  .tabsel{flex:1}
+  .tabsel select{width:100%}
+  .entry,.composer{padding:14px 14px 16px}
+  .f-amt{width:104px}
+  .f-amt input{font-size:17px}
+  .f-date{flex:1; min-width:130px; width:auto}
+  .monthnav{flex:1}
+  .monthnav .mlabel{font-size:15.5px; min-width:0; flex:1}
+  .tiles{grid-template-columns:1fr 1fr}
+  .tile .v{font-size:20px}
+  .chartbody{padding:8px 14px 14px}
+  .txn,.jentry,.dayhead{padding-left:14px; padding-right:14px}
+  .del,.edit{opacity:1}
+  .promptline .q{font-size:17px}
+  .search{max-width:none; width:100%}
+  .hstreak{width:auto}
+  .facts{grid-template-columns:1fr 1fr}
+  .emailrow{display:flex; width:100%; margin-right:0}
+  .mailinput{flex:1; width:auto}
+  .sumactions .btn{flex:1; text-align:center}
+}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed; z-index:40; pointer-events:none; background:var(--ink); color:var(--ground);
+  font-size:12.5px; line-height:1.4; padding:7px 10px; border-radius:7px; box-shadow:var(--shadow);
+  opacity:0; transform:translate(-50%,calc(-100% - 10px)); transition:opacity .1s; max-width:220px}
+#tip .t-k{opacity:.75}
+#tip .t-v{font-weight:600; font-variant-numeric:tabular-nums}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><h1>Daybook</h1><span class="sub">spending &amp; journal</span></div>
+    <span class="tabsel">
+      <select id="tab-select" aria-label="Active tab">
+        <option value="spend">Spending</option>
+        <option value="journal">Journal</option>
+        <option value="money">Money review</option>
+        <option value="life">Life review</option>
+      </select>
+    </span>
+  </header>
+
+  <!-- ============ SPENDING ============ -->
+  <main id="view-spend" class="stack">
+    <section class="card entry" aria-label="Add an expense">
+      <div class="qadd" id="e-qadd" hidden></div>
+      <div class="row1">
+        <div class="field f-amt"><label for="e-amt">Amount</label><input id="e-amt" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+        <div class="field f-note"><label for="e-note">What was it?</label><input id="e-note" type="text" placeholder="Coffee, groceries, train…" maxlength="80"></div>
+        <div class="field f-date"><label for="e-date">Date</label><input id="e-date" type="date"></div>
+      </div>
+      <div class="chips" id="e-cats" role="group" aria-label="Category"></div>
+      <div class="actions"><button class="btn ghost" id="e-cancel" hidden>Cancel</button><button class="btn" id="e-add">Add expense</button></div>
+    </section>
+
+    <div class="spendhead">
+      <div class="monthnav">
+        <button class="navbtn" id="m-prev" aria-label="Previous month">‹</button>
+        <span class="mlabel" id="m-label"></span>
+        <button class="navbtn" id="m-next" aria-label="Next month">›</button>
+      </div>
+      <button class="today-link" id="m-today" hidden>Back to this month</button>
+      <div class="search s-exp"><input id="e-search" type="search" placeholder="Search expenses…" aria-label="Search expenses"></div>
+    </div>
+
+    <section class="tiles" id="tiles"></section>
+
+    <div class="charts">
+      <section class="card">
+        <div class="card-h"><h3>By category</h3><span class="hint" id="donut-hint"></span></div>
+        <div class="chartbody" id="donut-body"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h3>Last 6 months</h3><span class="hint">total spent</span></div>
+        <div class="chartbody" id="bars-body"></div>
+      </section>
+    </div>
+
+    <section class="card ledger" id="ledger" aria-label="Expenses this month"></section>
+  </main>
+
+  <!-- ============ JOURNAL ============ -->
+  <main id="view-journal" class="stack" hidden>
+    <section class="card composer" aria-label="Write an entry">
+      <div class="jdate-row">
+        <div class="jdate" id="j-date"></div>
+        <span class="streak" id="j-streak"></span>
+      </div>
+      <div class="editing-bar" id="j-editing" hidden>
+        <span id="j-editing-label"></span>
+        <button id="j-cancel">Cancel</button>
+      </div>
+      <div class="chips daypick" id="j-daypick"></div>
+      <div class="promptline">
+        <p class="q" id="j-prompt"></p>
+        <button class="shuffle" id="j-shuffle">↻ New prompt</button>
+      </div>
+      <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
+      <div class="jlabel">Today I…</div>
+      <div class="habits" id="j-habits" role="group" aria-label="Daily checklist"></div>
+      <textarea id="j-text" placeholder="Write a little or a lot…"></textarea>
+      <div class="actions">
+        <span class="count" id="j-count"></span>
+        <button class="btn" id="j-save">Save entry</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Poop log</h3><span class="hint" id="p-hint"></span></div>
+      <div class="chartbody">
+        <div class="ptoday" id="p-today"></div>
+        <div class="chips pbuttons" id="p-buttons"></div>
+        <div class="strip pstrip" id="p-strip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Mood, last 14 days</h3><span class="hint" id="strip-hint"></span></div>
+      <div class="strip" id="strip"></div>
+      <div class="hlegend" id="strip-legend"></div>
+    </section>
+
+    <section class="card" id="j-flash" hidden>
+      <div class="card-h"><h3>On this day</h3><span class="hint">from your archive</span></div>
+      <div id="j-flash-body"></div>
+    </section>
+
+    <div class="jhead">
+      <h2 id="j-listtitle">Past entries</h2>
+      <button class="fpill" id="j-fpill" hidden></button>
+      <div class="search"><input id="j-search" type="search" placeholder="Search entries…" aria-label="Search entries"></div>
+    </div>
+    <section class="card" id="j-list"></section>
+  </main>
+
+  <!-- ============ MONEY REVIEW ============ -->
+  <main id="view-money" class="stack" hidden>
+    <section class="card">
+      <div class="card-h"><h3>Budgets</h3><button class="shuffle" id="b-edit">Edit budgets</button></div>
+      <div class="chartbody" id="b-body"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3 id="r-month-title">This month</h3><span class="hint">a quick recap</span></div>
+      <div class="chartbody" id="r-month"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Spending report</h3>
+        <span class="sumtoggle chips">
+          <button class="chip" id="ms-week" aria-pressed="true">Weekly</button>
+          <button class="chip" id="ms-month" aria-pressed="false">Monthly</button>
+        </span>
+      </div>
+      <div class="chartbody">
+        <div class="sumtext" id="ms-text"></div>
+        <div class="sumactions">
+          <label class="emailrow">Send to <input type="email" class="mailinput" id="ms-mail" placeholder="you@email.com" autocomplete="email"></label>
+          <button class="btn ghost" id="ms-copy">Copy</button>
+          <button class="btn" id="ms-email">Email me this</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ LIFE REVIEW ============ -->
+  <main id="view-life" class="stack" hidden>
+    <div class="charts">
+      <section class="card">
+        <div class="card-h"><h3>Habits</h3><span class="hint">last 7 days &amp; streaks</span></div>
+        <div class="chartbody" id="r-habits"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h3>Mood insights</h3><span class="hint" id="r-insights-hint"></span></div>
+        <div class="chartbody" id="r-insights"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-h"><h3>Journal report</h3>
+        <span class="sumtoggle chips">
+          <button class="chip" id="ls-week" aria-pressed="true">Weekly</button>
+          <button class="chip" id="ls-month" aria-pressed="false">Monthly</button>
+        </span>
+      </div>
+      <div class="chartbody">
+        <div class="sumtext" id="ls-text"></div>
+        <div class="sumactions">
+          <label class="emailrow">Send to <input type="email" class="mailinput" id="ls-mail" placeholder="you@email.com" autocomplete="email"></label>
+          <button class="btn ghost" id="ls-copy">Copy</button>
+          <button class="btn" id="ls-email">Email me this</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="datarow">
+    <button id="d-export">Export data</button>
+    <span aria-hidden="true">·</span>
+    <button id="d-import">Import data</button>
+  </footer>
+</div>
+
+<div id="dlg-wrap" hidden>
+  <div class="dlg-backdrop" id="dlg-backdrop"></div>
+  <div class="dlg card" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <h3 id="dlg-title"></h3>
+    <p class="dlg-sub" id="dlg-sub"></p>
+    <textarea id="dlg-text" spellcheck="false"></textarea>
+    <div class="dlg-status" id="dlg-status"></div>
+    <div class="dlg-actions">
+      <button class="btn ghost" id="dlg-close">Close</button>
+      <span class="dlg-spring"></span>
+      <button class="btn ghost" id="dlg-file" hidden>Choose file…</button>
+      <input type="file" id="dlg-fileinput" accept=".json,application/json" hidden>
+      <button class="btn ghost" id="dlg-download" hidden>Download file</button>
+      <button class="btn" id="dlg-primary"></button>
+    </div>
+  </div>
+</div>
+<div id="tip" role="presentation"></div>
+
+<script>
+"use strict";
+/* ---------- data ---------- */
+const CATS = [
+  {id:"food",  name:"Food & drink",  v:"--cat-1"},
+  {id:"groc",  name:"Groceries",     v:"--cat-2"},
+  {id:"trans", name:"Transport",     v:"--cat-3"},
+  {id:"home",  name:"Housing & bills",v:"--cat-4"},
+  {id:"fun",   name:"Entertainment", v:"--cat-5"},
+  {id:"shop",  name:"Shopping",      v:"--cat-6"},
+  {id:"health",name:"Health",        v:"--cat-7"},
+  {id:"other", name:"Other",         v:"--cat-8"},
+];
+const catById = id => CATS.find(c=>c.id===id) || CATS[7];
+
+const MOODS = [
+  {n:1,label:"Rough",v:"--mood-1"},
+  {n:2,label:"Low",  v:"--mood-2"},
+  {n:3,label:"Okay", v:"--mood-3"},
+  {n:4,label:"Good", v:"--mood-4"},
+  {n:5,label:"Great",v:"--mood-5"},
+];
+const moodByN = n => MOODS.find(m=>m.n===n);
+
+const HABITS = [
+  {id:"exercise", name:"Exercised",      v:"--cat-1"},
+  {id:"read",     name:"Read a book",    v:"--cat-3"},
+  {id:"meditate", name:"Meditated",      v:"--cat-5"},
+  {id:"walk",     name:"Walked outside", v:"--cat-2"},
+  {id:"sleep",    name:"Slept well",     v:"--cat-8"},
+];
+const habitById = id => HABITS.find(h=>h.id===id);
+
+const POOPS = [
+  {id:"hard",   label:"Hard",   v:"--mood-2"},
+  {id:"normal", label:"Normal", v:"--mood-5"},
+  {id:"soft",   label:"Soft",   v:"--cat-3"},
+  {id:"loose",  label:"Loose",  v:"--mood-1"},
+];
+const poopById = id => POOPS.find(p=>p.id===id);
+
+const PROMPTS = [
+  "What's one thing that went well today?",
+  "What's taking up most of your headspace right now?",
+  "What are you looking forward to?",
+  "What drained your energy today — and what restored it?",
+  "Describe today in three words, then explain one of them.",
+  "What did you do today that your future self will thank you for?",
+  "Who made your day a little better, and how?",
+  "What's something you'd do differently if today had a rewind button?",
+  "What small thing did you notice today that you usually walk past?",
+  "What are you avoiding, and what's one tiny step toward it?",
+  "What made you laugh (or almost laugh) today?",
+  "If today had a soundtrack, what would be playing?",
+  "What's something you learned — about anything — today?",
+  "What would make tomorrow feel like a win?",
+  "What are you grateful for right now, specifically?",
+  "Where did your time actually go today?",
+];
+
+const load = (k,f)=>{ try{ const v=JSON.parse(localStorage.getItem(k)); return v==null?f:v; }catch(e){ return f; } };
+const save = (k,v)=>{ const s=JSON.stringify(v); localStorage.setItem(k,s);
+  try{ window.webkit?.messageHandlers?.store?.postMessage({k,v:s}); }catch(e){} };
+let expenses = load("db_expenses",[]);   // {id, amt, cat, note, date:"YYYY-MM-DD", ts}
+let journal  = load("db_journal",[]);    // {id, date, mood, habits, prompt, text, ts}
+let budgets  = load("db_budgets",{});    // {_all: n, <catId>: n}
+let poops    = load("db_poops",[]);      // {id, date, type, ts}
+let userEmail = load("db_email","");
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const cur = new Intl.NumberFormat("en-SG",{style:"currency",currency:"SGD"});
+const fmt = n => cur.format(n);
+const pad = n => String(n).padStart(2,"0");
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayIso = () => isoDate(new Date());
+const monthKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const parseIso = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const esc = s => s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dayLabel = iso => {
+  const d = parseIso(iso), t = todayIso();
+  if (iso===t) return "Today";
+  const y = new Date(); y.setDate(y.getDate()-1);
+  if (iso===isoDate(y)) return "Yesterday";
+  return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}) + (d.getFullYear()!==new Date().getFullYear() ? ", "+d.getFullYear() : "");
+};
+const avg = a => a.reduce((s,x)=>s+x,0)/a.length;
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+function showTip(html,x,y){ tip.innerHTML=html; tip.style.opacity=1; moveTip(x,y); }
+function moveTip(x,y){
+  tip.style.left = Math.min(Math.max(x,110), innerWidth-110)+"px";
+  tip.style.top = Math.max(y,54)+"px";
+}
+function hideTip(){ tip.style.opacity=0; }
+
+/* ---------- tabs ---------- */
+const views = {spend:$("#view-spend"), journal:$("#view-journal"), money:$("#view-money"), life:$("#view-life")};
+const tabSelect = $("#tab-select");
+function setTab(which){
+  if (which==="review") which = "money";   // migrate old saved tab
+  if (!views[which]) which = "spend";
+  tabSelect.value = which;
+  for (const k in views) views[k].hidden = k!==which;
+  save("db_tab",which);
+}
+tabSelect.onchange = ()=>setTab(tabSelect.value);
+
+/* =====================================================
+   SPENDING
+===================================================== */
+let viewMonth = new Date(); viewMonth.setDate(1);
+let selCat = load("db_lastcat","food");
+let editingExpense = null;
+let catFilter = null;
+let eQuery = "";
+
+/* --- quick entry --- */
+const catsEl = $("#e-cats");
+function renderCatChips(){
+  catsEl.innerHTML = CATS.map(c=>
+    `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id===selCat}" style="--c:var(${c.v})"><span class="dot"></span>${c.name}</button>`
+  ).join("");
+  catsEl.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ selCat=b.dataset.cat; save("db_lastcat",selCat); renderCatChips(); });
+}
+$("#e-date").value = todayIso();
+
+function addExpense(){
+  const amt = parseFloat($("#e-amt").value);
+  if (!(amt>0)) { $("#e-amt").focus(); return; }
+  const date = $("#e-date").value || todayIso();
+  const rounded = Math.round(amt*100)/100, note = $("#e-note").value.trim();
+  if (editingExpense){
+    const e = expenses.find(x=>x.id===editingExpense);
+    if (e){ e.amt=rounded; e.cat=selCat; e.note=note; e.date=date; }
+    stopEditExpense();
+  } else {
+    expenses.push({id:uid(), amt:rounded, cat:selCat, note, date, ts:Date.now()});
+  }
+  save("db_expenses",expenses);
+  $("#e-amt").value=""; $("#e-note").value="";
+  const d = parseIso(date); viewMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  renderSpend();
+  $("#e-amt").focus();
+}
+$("#e-add").onclick = addExpense;
+["e-amt","e-note"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{ if(e.key==="Enter") addExpense(); }));
+
+function startEditExpense(id){
+  const e = expenses.find(x=>x.id===id);
+  if (!e) return;
+  editingExpense = id;
+  $("#e-amt").value = e.amt; $("#e-note").value = e.note; $("#e-date").value = e.date;
+  selCat = e.cat; renderCatChips();
+  $("#e-add").textContent = "Save changes";
+  $("#e-cancel").hidden = false;
+  document.querySelector(".entry").scrollIntoView({behavior:"smooth", block:"start"});
+  $("#e-amt").focus();
+}
+function stopEditExpense(){
+  editingExpense = null;
+  $("#e-add").textContent = "Add expense";
+  $("#e-cancel").hidden = true;
+}
+$("#e-cancel").onclick = ()=>{ $("#e-amt").value=""; $("#e-note").value=""; $("#e-date").value=todayIso(); stopEditExpense(); };
+
+$("#e-search").addEventListener("input", e=>{ eQuery = e.target.value.trim(); renderLedger(); });
+
+/* --- quick add: most frequent note+category combos --- */
+function renderQuickAdd(){
+  const freq = {};
+  expenses.forEach(e=>{
+    if (!e.note) return;
+    const k = e.note.trim().toLowerCase()+"|"+e.cat;
+    const f = freq[k] = freq[k] || {n:0, ts:0};
+    f.n++;
+    if (e.ts>=f.ts){ f.ts=e.ts; f.amt=e.amt; f.note=e.note.trim(); f.cat=e.cat; }
+  });
+  const top = Object.values(freq).filter(f=>f.n>=2).sort((a,b)=>b.n-a.n || b.ts-a.ts).slice(0,4);
+  const el = $("#e-qadd");
+  if (!top.length){ el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  el.innerHTML = `<span class="qlabel">Quick add</span>` + top.map((f,i)=>
+    `<button class="chip" data-q="${i}" title="Add ${esc(f.note)} for today"><span class="dot" style="background:var(${catById(f.cat).v})"></span>${esc(f.note)}&nbsp;<span class="num">${fmt(f.amt)}</span></button>`).join("");
+  el.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{
+    const f = top[+b.dataset.q];
+    expenses.push({id:uid(), amt:f.amt, cat:f.cat, note:f.note, date:todayIso(), ts:Date.now()});
+    save("db_expenses",expenses);
+    viewMonth = new Date(); viewMonth.setDate(1);
+    renderSpend();
+  });
+}
+
+/* --- month nav --- */
+function shiftMonth(n){ viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+n, 1); renderSpend(); }
+$("#m-prev").onclick = ()=>shiftMonth(-1);
+$("#m-next").onclick = ()=>shiftMonth(1);
+$("#m-today").onclick = ()=>{ viewMonth = new Date(); viewMonth.setDate(1); renderSpend(); };
+
+function monthExpenses(key){ return expenses.filter(e=>e.date.startsWith(key)); }
+const sum = arr => arr.reduce((s,e)=>s+e.amt,0);
+
+/* --- tiles --- */
+function renderTiles(){
+  const key = monthKey(viewMonth);
+  const curList = monthExpenses(key);
+  const prev = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
+  const prevTotal = sum(monthExpenses(monthKey(prev)));
+  const total = sum(curList);
+
+  const now = new Date();
+  const isCurrent = monthKey(now)===key;
+  const daysElapsed = isCurrent ? now.getDate() : new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate();
+  const avgD = daysElapsed ? total/daysElapsed : 0;
+
+  const byCat = {};
+  curList.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
+  const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+
+  let deltaHtml = `<span class="s">no data for ${MONTHS_SHORT[prev.getMonth()]}</span>`;
+  if (prevTotal>0){
+    const diff = total-prevTotal, pct = Math.abs(diff)/prevTotal*100;
+    if (Math.abs(diff) < 0.005) deltaHtml = `<span class="s">even with ${MONTHS_SHORT[prev.getMonth()]}</span>`;
+    else deltaHtml = `<span class="s"><span class="${diff>0?"delta-up":"delta-down"}">${diff>0?"▲":"▼"} ${pct.toFixed(0)}%</span> vs ${MONTHS_SHORT[prev.getMonth()]} (${fmt(prevTotal)})</span>`;
+  }
+
+  $("#tiles").innerHTML = `
+    <div class="card tile"><div class="k">Spent in ${MONTHS_SHORT[viewMonth.getMonth()]}</div><div class="v num">${fmt(total)}</div>${deltaHtml}</div>
+    <div class="card tile"><div class="k">Daily average</div><div class="v num">${fmt(avgD)}</div><span class="s">over ${daysElapsed} day${daysElapsed===1?"":"s"}</span></div>
+    <div class="card tile"><div class="k">Top category</div><div class="v" style="font-size:19px; display:flex; align-items:center; gap:8px; margin-top:7px">${
+      top ? `<span class="dot" style="width:10px;height:10px;border-radius:50%;background:var(${catById(top[0]).v});flex:0 0 auto"></span>${esc(catById(top[0]).name)}` : "—"
+    }</div><span class="s">${top?fmt(top[1]):"nothing yet"}</span></div>
+    <div class="card tile"><div class="k">Entries</div><div class="v num">${curList.length}</div><span class="s">this month</span></div>`;
+}
+
+/* --- donut --- */
+function renderDonut(){
+  const key = monthKey(viewMonth);
+  const list = monthExpenses(key);
+  const body = $("#donut-body");
+  $("#donut-hint").textContent = MONTHS_LONG[viewMonth.getMonth()];
+  if (!list.length){ body.innerHTML = `<div class="empty">Nothing logged in ${MONTHS_LONG[viewMonth.getMonth()]} yet — add an expense above and it lands here.</div>`; return; }
+
+  const totals = CATS.map(c=>({c, amt: sum(list.filter(e=>e.cat===c.id))})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
+  const total = sum(list);
+  const R=52, C=2*Math.PI*R, GAP = totals.length>1 ? 2.5 : 0;
+
+  let off = C*0.25; // start at 12 o'clock
+  const slices = totals.map(t=>{
+    const len = Math.max(t.amt/total*C - GAP, 0.5);
+    const s = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="var(${t.c.v})" stroke-width="22"
+      stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${off}" data-cat="${t.c.id}"
+      data-name="${esc(t.c.name)}" data-amt="${t.amt}" data-pct="${(t.amt/total*100).toFixed(0)}"></circle>`;
+    off -= t.amt/total*C;
+    return s;
+  }).join("");
+
+  body.innerHTML = `<div class="donut-wrap">
+    <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Spending by category">
+      ${slices}
+      <text x="70" y="66" text-anchor="middle" font-size="15.5" font-weight="600" fill="var(--ink)" class="num">${fmt(total)}</text>
+      <text x="70" y="83" text-anchor="middle" font-size="10" fill="var(--ink-3)">total</text>
+    </svg>
+    <div class="legend">${totals.map(t=>
+      `<div class="li${t.c.id===catFilter?" sel":""}" data-cat="${t.c.id}" title="Filter the list to ${esc(t.c.name)}"><span class="dot" style="background:var(${t.c.v})"></span><span class="nm">${esc(t.c.name)}</span><span class="amt">${fmt(t.amt)}</span></div>`).join("")}
+    </div></div>`;
+
+  body.querySelectorAll("circle").forEach(el=>{
+    el.addEventListener("mousemove",e=>showTip(
+      `<span class="t-k">${el.dataset.name}</span><br><span class="t-v">${fmt(+el.dataset.amt)}</span> · ${el.dataset.pct}%`, e.clientX, e.clientY));
+    el.addEventListener("mouseleave",hideTip);
+  });
+  body.querySelectorAll("[data-cat]").forEach(el=>el.addEventListener("click",()=>{
+    catFilter = catFilter===el.dataset.cat ? null : el.dataset.cat;
+    renderDonut(); renderLedger();
+  }));
+}
+
+/* --- bars: last 6 months --- */
+function renderBars(){
+  const months = [];
+  for (let i=5;i>=0;i--){
+    const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-i, 1);
+    months.push({d, key:monthKey(d), total:sum(monthExpenses(monthKey(d)))});
+  }
+  const body = $("#bars-body");
+  if (months.every(m=>m.total===0)){ body.innerHTML = `<div class="empty">Your six-month trend will draw itself as you log spending.</div>`; return; }
+
+  const W=380,H=190, padL=8,padR=8,padT=26,padB=24;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const max = Math.max(...months.map(m=>m.total));
+  const nice = (v=>{ const p=Math.pow(10,Math.floor(Math.log10(v))); return Math.ceil(v/(p/2))*(p/2); })(max);
+  const y = v => padT + plotH - (v/nice)*plotH;
+  const slot = plotW/6, bw = Math.min(slot*0.5, 44);
+
+  const grid = [0.5,1].map(f=>`<line x1="${padL}" x2="${W-padR}" y1="${y(nice*f)}" y2="${y(nice*f)}" stroke="var(--grid)" stroke-width="1"/>`).join("");
+  const gridLabels = [0.5,1].map(f=>`<text x="${W-padR}" y="${y(nice*f)-4}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" class="num"
+    stroke="var(--surface)" stroke-width="3" paint-order="stroke">${fmt(nice*f).replace(/\.\d+$/,"")}</text>`).join("");
+
+  const focusKey = monthKey(viewMonth);
+  const bars = months.map((m,i)=>{
+    const cx = padL + slot*i + slot/2, x0 = cx-bw/2;
+    const h = Math.max((m.total/nice)*plotH, m.total>0?2:0), yy = padT+plotH-h;
+    const rr = Math.min(4, h);
+    const path = h>0 ? `<path d="M${x0} ${yy+rr} q0 -${rr} ${rr} -${rr} h${bw-2*rr} q${rr} 0 ${rr} ${rr} v${h-rr} h${-bw} z"
+        fill="var(--accent)" opacity="${m.key===focusKey?1:0.55}"></path>` : "";
+    const label = m.key===focusKey && m.total>0 ? `<text x="${cx}" y="${yy-6}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--ink)" class="num">${fmt(m.total).replace(/\.\d+$/,"")}</text>` : "";
+    return `<g>${path}${label}
+      <text x="${cx}" y="${H-8}" text-anchor="middle" font-size="10.5" fill="${m.key===focusKey?"var(--ink)":"var(--ink-3)"}" font-weight="${m.key===focusKey?600:400}">${MONTHS_SHORT[m.d.getMonth()]}</text>
+      <rect x="${padL+slot*i}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" data-i="${i}"></rect></g>`;
+  }).join("");
+
+  body.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Total spent per month, last six months">
+    ${grid}<line x1="${padL}" x2="${W-padR}" y1="${padT+plotH}" y2="${padT+plotH}" stroke="var(--baseline)" stroke-width="1"/>${bars}${gridLabels}</svg>`;
+
+  body.querySelectorAll("rect[data-i]").forEach(r=>{
+    const m = months[+r.dataset.i];
+    r.addEventListener("mousemove",e=>showTip(`<span class="t-k">${MONTHS_LONG[m.d.getMonth()]} ${m.d.getFullYear()}</span><br><span class="t-v">${fmt(m.total)}</span>`, e.clientX, e.clientY));
+    r.addEventListener("mouseleave",hideTip);
+  });
+}
+
+/* --- ledger --- */
+function renderLedger(){
+  const el = $("#ledger");
+  let list, banner = "";
+  if (eQuery){
+    const q = eQuery.toLowerCase();
+    list = expenses.filter(e=>(e.note||"").toLowerCase().includes(q) || catById(e.cat).name.toLowerCase().includes(q));
+    banner = `<div class="lnote">${list.length} match${list.length===1?"":"es"} across all months <button class="lclear" data-clear="q" aria-label="Clear search">×</button></div>`;
+  } else {
+    list = monthExpenses(monthKey(viewMonth));
+    if (catFilter){
+      list = list.filter(e=>e.cat===catFilter);
+      banner = `<div class="lnote">${esc(catById(catFilter).name)} only <button class="lclear" data-clear="c" aria-label="Clear category filter">×</button></div>`;
+    }
+  }
+  list = [...list].sort((a,b)=> b.date.localeCompare(a.date) || b.ts-a.ts);
+
+  if (!list.length){
+    el.innerHTML = banner + `<div class="empty">${eQuery ? `Nothing matches “${esc(eQuery)}”.` : catFilter ? `No ${esc(catById(catFilter).name)} expenses in ${MONTHS_LONG[viewMonth.getMonth()]}.` : `No expenses in ${MONTHS_LONG[viewMonth.getMonth()]} ${viewMonth.getFullYear()}.`}</div>`;
+    bindLedgerClear(el);
+    return;
+  }
+
+  const byDay = {};
+  list.forEach(e=>(byDay[e.date]=byDay[e.date]||[]).push(e));
+  el.innerHTML = banner + Object.keys(byDay).sort().reverse().map(day=>{
+    const rows = byDay[day].map(e=>{
+      const c = catById(e.cat);
+      const label = e.note ? highlight(esc(e.note), eQuery) : esc(c.name);
+      return `<div class="txn">
+        <span class="dot" style="background:var(${c.v})"></span>
+        <div class="what"><div class="note">${label}</div><div class="cat">${esc(c.name)}</div></div>
+        <span class="amt num">${fmt(e.amt)}</span>
+        <button class="edit" data-editx="${e.id}" aria-label="Edit expense">✎</button>
+        <button class="del" data-del="${e.id}" aria-label="Delete expense">×</button></div>`;
+    }).join("");
+    return `<div class="dayhead"><span>${dayLabel(day)}</span><span class="num">${fmt(sum(byDay[day]))}</span></div>${rows}`;
+  }).join("");
+
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    expenses = expenses.filter(e=>e.id!==b.dataset.del);
+    if (editingExpense===b.dataset.del) stopEditExpense();
+    save("db_expenses",expenses); renderSpend();
+  });
+  el.querySelectorAll("[data-editx]").forEach(b=>b.onclick=()=>startEditExpense(b.dataset.editx));
+  bindLedgerClear(el);
+}
+function bindLedgerClear(el){
+  el.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>{
+    if (b.dataset.clear==="q"){ eQuery=""; $("#e-search").value=""; renderLedger(); }
+    else { catFilter=null; renderDonut(); renderLedger(); }
+  });
+}
+
+function renderSpend(){
+  const now = new Date();
+  $("#m-label").textContent = `${MONTHS_LONG[viewMonth.getMonth()]} ${viewMonth.getFullYear()}`;
+  const isCurrent = monthKey(viewMonth)===monthKey(now);
+  $("#m-next").disabled = isCurrent;
+  $("#m-today").hidden = isCurrent;
+  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview();
+}
+
+/* =====================================================
+   JOURNAL
+===================================================== */
+let selMood = 0;
+let curPrompt = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
+let query = "";
+let selJDate = todayIso();
+let editingEntry = null;
+let jFilter = null;   // {type:"mood"|"habit", value}
+
+function yesterdayIso(){ const d = new Date(); d.setDate(d.getDate()-1); return isoDate(d); }
+function updateJDateLabel(){
+  const iso = editingEntry ? (journal.find(e=>e.id===editingEntry)?.date || selJDate) : selJDate;
+  $("#j-date").textContent = parseIso(iso).toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"});
+}
+function renderDayPick(){
+  if (editingEntry){ $("#j-daypick").innerHTML = ""; return; }
+  const opts = [[todayIso(),"Today"],[yesterdayIso(),"Yesterday"]];
+  $("#j-daypick").innerHTML = opts.map(([iso,l])=>
+    `<button class="chip" data-d="${iso}" aria-pressed="${iso===selJDate}">${l}</button>`).join("");
+  $("#j-daypick").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
+    selJDate = b.dataset.d; renderDayPick(); updateJDateLabel();
+  });
+}
+function renderStreakNudge(){
+  const days = new Set(journal.map(e=>e.date));
+  let streak = 0;
+  const d = new Date();
+  if (!days.has(isoDate(d))) d.setDate(d.getDate()-1);
+  while (days.has(isoDate(d))){ streak++; d.setDate(d.getDate()-1); }
+  $("#j-streak").textContent = streak>=2 ? `${streak} days in a row` : "";
+}
+$("#j-prompt").textContent = curPrompt;
+$("#j-shuffle").onclick = ()=>{
+  let p; do { p = PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; } while (p===curPrompt);
+  curPrompt = p; $("#j-prompt").textContent = p;
+};
+
+function renderMoodPicker(){
+  $("#j-moods").innerHTML = MOODS.map(m=>
+    `<button class="mood" data-m="${m.n}" aria-pressed="${m.n===selMood}" style="--c:var(${m.v})"><span class="dot"></span>${m.label}</button>`).join("");
+  $("#j-moods").querySelectorAll(".mood").forEach(b=>b.onclick=()=>{
+    selMood = (+b.dataset.m===selMood) ? 0 : +b.dataset.m; renderMoodPicker();
+  });
+}
+
+let selHabits = new Set();
+function renderHabitPicker(){
+  $("#j-habits").innerHTML = HABITS.map(h=>
+    `<button class="habit" data-h="${h.id}" aria-pressed="${selHabits.has(h.id)}"><span class="tick">✓</span>${h.name}</button>`).join("");
+  $("#j-habits").querySelectorAll(".habit").forEach(b=>b.onclick=()=>{
+    const id = b.dataset.h;
+    selHabits.has(id) ? selHabits.delete(id) : selHabits.add(id);
+    renderHabitPicker();
+  });
+}
+
+const jText = $("#j-text");
+jText.addEventListener("input", ()=>{
+  const w = jText.value.trim() ? jText.value.trim().split(/\s+/).length : 0;
+  $("#j-count").textContent = w ? `${w} word${w===1?"":"s"}` : "";
+});
+
+$("#j-save").onclick = ()=>{
+  const text = jText.value.trim();
+  if (!text && !selMood && !selHabits.size){ jText.focus(); return; }
+  if (editingEntry){
+    const e = journal.find(x=>x.id===editingEntry);
+    if (e){ e.text=text; e.mood=selMood; e.habits=[...selHabits]; if(text && !e.prompt) e.prompt=curPrompt; }
+    stopEditEntry();
+  } else {
+    journal.push({id:uid(), date:selJDate, mood:selMood, habits:[...selHabits], prompt:text?curPrompt:"", text, ts:Date.now()});
+  }
+  save("db_journal",journal);
+  jText.value=""; $("#j-count").textContent="";
+  selMood=0; renderMoodPicker();
+  selHabits.clear(); renderHabitPicker();
+  selJDate = todayIso(); renderDayPick(); updateJDateLabel();
+  $("#j-shuffle").click();
+  renderJournal();
+};
+
+function startEditEntry(id){
+  const e = journal.find(x=>x.id===id);
+  if (!e) return;
+  editingEntry = id;
+  jText.value = e.text || "";
+  jText.dispatchEvent(new Event("input"));
+  selMood = e.mood || 0; renderMoodPicker();
+  selHabits = new Set(e.habits || []); renderHabitPicker();
+  if (e.prompt){ curPrompt = e.prompt; $("#j-prompt").textContent = e.prompt; }
+  $("#j-editing").hidden = false;
+  $("#j-editing-label").textContent = `Editing your entry from ${dayLabel(e.date).toLowerCase()}`;
+  $("#j-save").textContent = "Save changes";
+  renderDayPick(); updateJDateLabel();
+  document.querySelector(".composer").scrollIntoView({behavior:"smooth", block:"start"});
+  jText.focus();
+}
+function stopEditEntry(){
+  editingEntry = null;
+  $("#j-editing").hidden = true;
+  $("#j-save").textContent = "Save entry";
+  renderDayPick(); updateJDateLabel();
+}
+$("#j-cancel").onclick = ()=>{
+  jText.value=""; $("#j-count").textContent="";
+  selMood=0; renderMoodPicker();
+  selHabits.clear(); renderHabitPicker();
+  stopEditEntry();
+};
+
+/* --- mood strip --- */
+function renderStrip(){
+  const days = [];
+  for (let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(isoDate(d)); }
+  const latestMood = {};
+  journal.forEach(e=>{ if(e.mood && (!latestMood[e.date] || e.ts>latestMood[e.date].ts)) latestMood[e.date]=e; });
+  const dayHabits = {};
+  journal.forEach(e=>(e.habits||[]).forEach(h=>(dayHabits[e.date]=dayHabits[e.date]||new Set()).add(h)));
+
+  $("#strip").innerHTML = days.map(day=>{
+    const e = latestMood[day], d = parseIso(day);
+    const m = e && moodByN(e.mood);
+    const done = HABITS.filter(h=>dayHabits[day]?.has(h.id));
+    return `<div class="sday${day===todayIso()?" today":""}" data-day="${day}" data-mood="${m?m.label:""}"
+      data-habits="${done.map(h=>h.name).join(", ")}">
+      <span class="b${m?" has":""}" style="${m?`background:var(${m.v})`:""}"></span>
+      <span class="hdots">${done.map(h=>`<i style="background:var(${h.v})"></i>`).join("")}</span>
+      <span class="l">${d.getDate()}</span></div>`;
+  }).join("");
+  $("#strip-legend").innerHTML = HABITS.map(h=>
+    `<span class="li"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>`).join("");
+
+  const logged = Object.keys(latestMood).filter(d=>days.includes(d)).length;
+  $("#strip-hint").textContent = logged ? `${logged} of 14 days logged` : "log a mood with an entry";
+
+  $("#strip").querySelectorAll(".sday").forEach(el=>{
+    el.addEventListener("mousemove",e=>{
+      const d = parseIso(el.dataset.day);
+      const habits = el.dataset.habits ? `<br>${esc(el.dataset.habits)}` : "";
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${el.dataset.mood||"no entry"}</span>${habits}`, e.clientX, e.clientY);
+    });
+    el.addEventListener("mouseleave",hideTip);
+  });
+}
+
+/* --- flashback --- */
+function renderFlash(){
+  const now = new Date();
+  const targets = [
+    ["A month ago", new Date(now.getFullYear(), now.getMonth()-1, now.getDate())],
+    ["A year ago",  new Date(now.getFullYear()-1, now.getMonth(), now.getDate())],
+  ];
+  const parts = [];
+  for (const [label,d] of targets){
+    const e = journal.filter(x=>x.date===isoDate(d)).sort((a,b)=>b.ts-a.ts)[0];
+    if (!e || (!e.text && !e.mood)) continue;
+    const m = e.mood ? moodByN(e.mood) : null;
+    const text = (e.text||"").length>240 ? esc(e.text.slice(0,240))+"…" : esc(e.text||"");
+    parts.push(`<div class="flash">
+      <div class="meta"><span class="d">${label} — ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}${d.getFullYear()!==now.getFullYear()?", "+d.getFullYear():""}</span>
+      ${m?`<span class="moodchip"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}</div>
+      ${text?`<div class="txt">${text}</div>`:""}</div>`);
+  }
+  $("#j-flash").hidden = !parts.length;
+  $("#j-flash-body").innerHTML = parts.join("");
+}
+
+/* --- poop log --- */
+function renderPoop(){
+  const today = todayIso();
+  const todays = poops.filter(p=>p.date===today).sort((a,b)=>a.ts-b.ts);
+
+  $("#p-today").innerHTML = (todays.length
+    ? `Today:` + todays.map(p=>{
+        const t = poopById(p.type);
+        const time = new Date(p.ts).toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+        return ` <span class="poopchip"><span class="dot" style="background:var(${t.v})"></span>${t.label} <span class="t">${time}</span><button class="px" data-pdel="${p.id}" aria-label="Delete">×</button></span>`;
+      }).join("")
+    : `Nothing yet today — log one when it happens.`);
+
+  $("#p-buttons").innerHTML = POOPS.map(t=>
+    `<button class="chip" data-p="${t.id}" style="--c:var(${t.v})"><span class="dot" style="background:var(${t.v})"></span>${t.label}</button>`).join("");
+
+  const days = [];
+  for (let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(isoDate(d)); }
+  const byDay = {};
+  poops.forEach(p=>(byDay[p.date]=byDay[p.date]||[]).push(p));
+  $("#p-strip").innerHTML = days.map(day=>{
+    const list = (byDay[day]||[]).slice(0,3);
+    const d = parseIso(day);
+    const names = (byDay[day]||[]).map(p=>poopById(p.type).label).join(", ");
+    return `<div class="sday${day===todayIso()?" today":""}" data-day="${day}" data-poops="${names}">
+      <span class="pdots">${list.length ? list.map(p=>`<i style="background:var(${poopById(p.type).v})"></i>`).join("") : `<span class="none"></span>`}</span>
+      <span class="l">${d.getDate()}</span></div>`;
+  }).join("");
+
+  const week = days.slice(7);
+  const weekN = week.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+  const wentDays = week.filter(d=>(byDay[d]||[]).length).length;
+  $("#p-hint").textContent = weekN ? `${weekN} in the last 7 days · went on ${wentDays} of 7` : "tap a button below to log one";
+
+  $("#p-buttons").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{
+    poops.push({id:uid(), date:todayIso(), type:b.dataset.p, ts:Date.now()});
+    save("db_poops",poops); renderPoop(); renderReview();
+  });
+  $("#p-today").querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{
+    poops = poops.filter(p=>p.id!==b.dataset.pdel);
+    save("db_poops",poops); renderPoop(); renderReview();
+  });
+  $("#p-strip").querySelectorAll(".sday").forEach(el=>{
+    el.addEventListener("mousemove",e=>{
+      const d = parseIso(el.dataset.day);
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${el.dataset.poops||"none logged"}</span>`, e.clientX, e.clientY);
+    });
+    el.addEventListener("mouseleave",hideTip);
+  });
+}
+
+/* --- entries list --- */
+$("#j-search").addEventListener("input", e=>{ query = e.target.value.trim(); renderList(); });
+
+function highlight(safeText, q){
+  if (!q) return safeText;
+  const safeQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return safeText.replace(new RegExp(safeQ,"gi"), m=>`<mark>${m}</mark>`);
+}
+
+function setJFilter(f){
+  jFilter = (jFilter && f && jFilter.type===f.type && jFilter.value===f.value) ? null : f;
+  renderList();
+}
+
+function renderList(){
+  const el = $("#j-list");
+  let list = [...journal].sort((a,b)=> b.date.localeCompare(a.date) || b.ts-a.ts);
+  if (jFilter){
+    list = jFilter.type==="mood"
+      ? list.filter(e=>e.mood===jFilter.value)
+      : list.filter(e=>(e.habits||[]).includes(jFilter.value));
+  }
+  if (query){
+    const q = query.toLowerCase();
+    list = list.filter(e=> e.text.toLowerCase().includes(q) || (e.prompt||"").toLowerCase().includes(q) || dayLabel(e.date).toLowerCase().includes(q));
+  }
+  $("#j-listtitle").textContent = (query||jFilter) ? `${list.length} match${list.length===1?"":"es"}` : "Past entries";
+
+  const pill = $("#j-fpill");
+  pill.hidden = !jFilter;
+  if (jFilter){
+    const name = jFilter.type==="mood" ? moodByN(jFilter.value).label : (habitById(jFilter.value)?.name || "");
+    pill.innerHTML = `${esc(name)} ×`;
+    pill.onclick = ()=>setJFilter(null);
+  }
+
+  if (!list.length){
+    el.innerHTML = `<div class="empty">${query||jFilter ? "Nothing matches that — clear the filter or try another word." : "Your entries will collect here — write your first one above."}</div>`;
+    return;
+  }
+  el.innerHTML = list.map(e=>{
+    const m = e.mood ? moodByN(e.mood) : null;
+    const habitChips = (e.habits||[]).map(id=>{
+      const h = habitById(id);
+      return h ? `<span class="habitchip" data-fh="${h.id}" title="Show all ${h.name} days"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>` : "";
+    }).join("");
+    return `<div class="jentry">
+      <div class="body">
+        <div class="meta"><span class="d">${dayLabel(e.date)}</span>${
+          m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${habitChips}</div>
+        ${e.prompt?`<div class="prompt-echo">${highlight(esc(e.prompt),query)}</div>`:""}
+        ${e.text?`<div class="txt">${highlight(esc(e.text),query)}</div>`:""}
+      </div>
+      <button class="edit" data-jedit="${e.id}" aria-label="Edit entry">✎</button>
+      <button class="del" data-jdel="${e.id}" aria-label="Delete entry">×</button></div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{
+    journal = journal.filter(e=>e.id!==b.dataset.jdel);
+    if (editingEntry===b.dataset.jdel) stopEditEntry();
+    save("db_journal",journal); renderJournal();
+  });
+  el.querySelectorAll("[data-jedit]").forEach(b=>b.onclick=()=>startEditEntry(b.dataset.jedit));
+  el.querySelectorAll("[data-fm]").forEach(c=>c.onclick=()=>setJFilter({type:"mood", value:+c.dataset.fm}));
+  el.querySelectorAll("[data-fh]").forEach(c=>c.onclick=()=>setJFilter({type:"habit", value:c.dataset.fh}));
+}
+
+function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderList(); renderReview(); }
+
+/* =====================================================
+   REVIEW
+===================================================== */
+let budgetEdit = false;
+
+function dayHabitSets(){
+  const m = {};
+  journal.forEach(e=>(e.habits||[]).forEach(h=>(m[e.date]=m[e.date]||new Set()).add(h)));
+  return m;
+}
+
+function renderBudgets(){
+  const el = $("#b-body");
+  const now = new Date(), key = monthKey(now);
+  const list = monthExpenses(key);
+  const total = sum(list);
+  const byCat = {};
+  list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
+  const dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+
+  if (budgetEdit){
+    $("#b-edit").textContent = "Cancel";
+    el.innerHTML = `<div class="bgrid">
+      <label class="bfield"><span class="dot" style="background:var(--accent)"></span><span class="nm">Overall (whole month)</span><input type="number" min="0" step="1" id="bi-_all" value="${budgets._all>0?budgets._all:""}" placeholder="—"></label>
+      ${CATS.map(c=>`<label class="bfield"><span class="dot" style="background:var(${c.v})"></span><span class="nm">${esc(c.name)}</span><input type="number" min="0" step="1" id="bi-${c.id}" value="${budgets[c.id]>0?budgets[c.id]:""}" placeholder="—"></label>`).join("")}
+      </div>
+      <div class="bactions"><button class="btn" id="b-save">Save budgets</button></div>`;
+    $("#b-save").onclick = ()=>{
+      const next = {};
+      for (const id of ["_all", ...CATS.map(c=>c.id)]){
+        const v = parseFloat($("#bi-"+id).value);
+        if (v>0) next[id] = Math.round(v*100)/100;
+      }
+      budgets = next;
+      save("db_budgets",budgets);
+      budgetEdit = false;
+      renderBudgets();
+    };
+    return;
+  }
+
+  $("#b-edit").textContent = "Edit budgets";
+  const brow = (name, spent, target, colorVar)=>{
+    const over = spent>target;
+    const pct = Math.min(spent/target*100, 100);
+    return `<div class="brow"><span class="dot" style="background:var(${colorVar})"></span><span class="nm">${esc(name)}</span>
+      <span class="bnum num">${fmt(spent)} of ${fmt(target)}${over?` · <span class="delta-up">${fmt(spent-target)} over</span>`:``}</span></div>
+      <div class="bbar"><i class="${over?"over":""}" style="width:${pct.toFixed(1)}%"></i></div>`;
+  };
+  const rows = [];
+  if (budgets._all>0) rows.push(brow(`Overall — ${MONTHS_LONG[now.getMonth()]}`, total, budgets._all, "--accent"));
+  CATS.forEach(c=>{ if (budgets[c.id]>0) rows.push(brow(c.name, byCat[c.id]||0, budgets[c.id], c.v)); });
+
+  if (!rows.length){
+    el.innerHTML = `<div class="empty">No budgets yet. Press “Edit budgets” to set monthly targets — overall, per category, or both — and progress bars will live here.</div>`;
+    return;
+  }
+  let proj = "";
+  if (budgets._all>0 && now.getDate()>=3 && total>0){
+    const pace = total/now.getDate()*dim;
+    const under = pace<=budgets._all;
+    proj = `<p class="proj">At this pace you'll spend about <strong class="num">${fmt(pace)}</strong> by ${MONTHS_SHORT[now.getMonth()]} ${dim} — <span class="${under?"delta-down":"delta-up"}">${under?fmt(budgets._all-pace)+" under":fmt(pace-budgets._all)+" over"}</span> your overall budget.</p>`;
+  }
+  el.innerHTML = rows.join("") + proj;
+}
+
+function renderHabitStats(){
+  const el = $("#r-habits");
+  const dayH = dayHabitSets();
+  if (!Object.keys(dayH).length){
+    el.innerHTML = `<div class="empty">Tick habits with your journal entries and streaks will show up here.</div>`;
+    return;
+  }
+  const last7 = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-6+i); return isoDate(d); });
+  el.innerHTML = HABITS.map(h=>{
+    const dots = last7.map(d=>`<i class="${dayH[d]?.has(h.id)?"on":""}" style="--c:var(${h.v})"></i>`).join("");
+    const n7 = last7.filter(d=>dayH[d]?.has(h.id)).length;
+    let cur=0, best=0, run=0, prev=null;
+    for (const d of Object.keys(dayH).filter(x=>dayH[x].has(h.id)).sort()){
+      if (prev){ const p=parseIso(prev); p.setDate(p.getDate()+1); run = isoDate(p)===d ? run+1 : 1; }
+      else run = 1;
+      best = Math.max(best,run); prev = d;
+    }
+    const dd = new Date();
+    if (!dayH[isoDate(dd)]?.has(h.id)) dd.setDate(dd.getDate()-1);
+    while (dayH[isoDate(dd)]?.has(h.id)){ cur++; dd.setDate(dd.getDate()-1); }
+    return `<div class="hrow"><span class="dot" style="background:var(${h.v})"></span><span class="nm">${h.name}</span>
+      <span class="h7">${dots}</span><span class="hnum num">${n7}/7</span>
+      <span class="hstreak">streak ${cur} · best ${best}</span></div>`;
+  }).join("");
+}
+
+function renderInsights(){
+  const el = $("#r-insights");
+  const dayMood = {}, dayMoodTs = {};
+  journal.forEach(e=>{ if (e.mood && (!dayMoodTs[e.date] || e.ts>dayMoodTs[e.date])){ dayMood[e.date]=e.mood; dayMoodTs[e.date]=e.ts; } });
+  const moodDays = Object.keys(dayMood);
+  if (moodDays.length<3){
+    $("#r-insights-hint").textContent = "";
+    el.innerHTML = `<div class="empty">Log moods for a few more days and patterns will start showing here.</div>`;
+    return;
+  }
+  $("#r-insights-hint").textContent = `${moodDays.length} days of mood data`;
+
+  const maxN = Math.max(...MOODS.map(m=>moodDays.filter(d=>dayMood[d]===m.n).length), 1);
+  const dist = `<div class="mdist">` + MOODS.map(m=>{
+    const n = moodDays.filter(d=>dayMood[d]===m.n).length;
+    return `<div class="mcol"><div class="mbarwrap"><div class="mbar" style="height:${Math.max(n/maxN*46,2)}px;background:var(${m.v})"></div></div><span class="mnum num">${n}</span><span class="ml">${m.label}</span></div>`;
+  }).join("") + `</div>`;
+
+  const sentences = [];
+  const dayH = dayHabitSets();
+  const effects = [];
+  for (const h of HABITS){
+    const w=[], wo=[];
+    for (const d of moodDays) (dayH[d]?.has(h.id)?w:wo).push(dayMood[d]);
+    if (w.length>=3 && wo.length>=3) effects.push({h, diff:avg(w)-avg(wo)});
+  }
+  effects.sort((a,b)=>b.diff-a.diff);
+  for (const x of effects.slice(0,2)){
+    if (x.diff>=0.3) sentences.push(`Your mood averages <strong>+${x.diff.toFixed(1)}</strong> higher on days you ${x.h.name.toLowerCase()}.`);
+  }
+  const daySpend = {};
+  expenses.forEach(e=>daySpend[e.date]=(daySpend[e.date]||0)+e.amt);
+  const lowD = moodDays.filter(d=>dayMood[d]<=2), hiD = moodDays.filter(d=>dayMood[d]>=4);
+  if (lowD.length>=3 && hiD.length>=3){
+    const diff = avg(lowD.map(d=>daySpend[d]||0)) - avg(hiD.map(d=>daySpend[d]||0));
+    if (Math.abs(diff)>=5){
+      sentences.push(diff>0
+        ? `Rough-and-Low days cost you about <strong class="num">${fmt(diff)}</strong> more than Good-and-Great days.`
+        : `You spend about <strong class="num">${fmt(-diff)}</strong> less on your rougher days.`);
+    }
+  }
+  el.innerHTML = dist + (sentences.length
+    ? `<ul class="ins">${sentences.map(s=>`<li>${s}</li>`).join("")}</ul>`
+    : `<p class="ins-none">No strong patterns yet — they'll sharpen as you log more days.</p>`);
+}
+
+function renderMonthReview(){
+  const now = new Date(), key = monthKey(now);
+  $("#r-month-title").textContent = `${MONTHS_LONG[now.getMonth()]} so far`;
+  const el = $("#r-month");
+  const list = monthExpenses(key);
+  if (!list.length){
+    el.innerHTML = `<div class="empty">Nothing spent yet this month.</div>`;
+    return;
+  }
+  const facts = [];
+  facts.push(`<div class="fact"><span class="k">Total spent</span><div class="v num">${fmt(sum(list))}</div><span class="s">${list.length} entries</span></div>`);
+  const biggest = [...list].sort((a,b)=>b.amt-a.amt)[0];
+  const byDay = {};
+  list.forEach(e=>byDay[e.date]=(byDay[e.date]||0)+e.amt);
+  const busiest = Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+  const byCat = {};
+  list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
+  const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+  facts.push(`<div class="fact"><span class="k">Biggest expense</span><div class="v num">${fmt(biggest.amt)}</div><span class="s">${esc(biggest.note||catById(biggest.cat).name)} — ${dayLabel(biggest.date)}</span></div>`);
+  facts.push(`<div class="fact"><span class="k">Busiest day</span><div class="v num">${fmt(busiest[1])}</div><span class="s">${dayLabel(busiest[0])}</span></div>`);
+  facts.push(`<div class="fact"><span class="k">Top category</span><div class="v"><span class="dot" style="background:var(${catById(top[0]).v})"></span>${esc(catById(top[0]).name)}</div><span class="s">${fmt(top[1])} so far</span></div>`);
+  el.innerHTML = `<div class="facts">${facts.join("")}</div>`;
+}
+
+/* --- weekly / monthly reports --- */
+let msPeriod = "week", lsPeriod = "week";
+
+function periodRange(p){
+  const now = new Date();
+  if (p==="week"){
+    const start = new Date(); start.setDate(start.getDate()-6);
+    return {
+      match: iso => iso>=isoDate(start) && iso<=isoDate(now),
+      days: 7,
+      label: `${MONTHS_SHORT[start.getMonth()]} ${start.getDate()} – ${MONTHS_SHORT[now.getMonth()]} ${now.getDate()}`,
+    };
+  }
+  const key = monthKey(now);
+  return { match: iso => iso.startsWith(key), days: now.getDate(), label: `${MONTHS_LONG[now.getMonth()]} ${now.getFullYear()} (so far)` };
+}
+
+function buildMoneyReport(p){
+  const r = periodRange(p);
+  const list = expenses.filter(e=>r.match(e.date));
+  const lines = [`Daybook — spending report, ${r.label}`, ""];
+  if (!list.length){ lines.push("No spending logged in this period."); return lines.join("\n"); }
+  const total = sum(list);
+  lines.push(`Total spent: ${fmt(total)} across ${list.length} entries`);
+  lines.push(`Daily average: ${fmt(total/r.days)}`);
+  const byCat = {};
+  list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
+  const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3)
+    .map(([id,amt])=>`${catById(id).name} ${fmt(amt)}`);
+  lines.push(`Top categories: ${top.join(" · ")}`);
+  const biggest = [...list].sort((a,b)=>b.amt-a.amt)[0];
+  lines.push(`Biggest expense: ${biggest.note||catById(biggest.cat).name} — ${fmt(biggest.amt)} (${dayLabel(biggest.date)})`);
+  if (budgets._all>0 && p==="month"){
+    const now = new Date(), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const pace = total/now.getDate()*dim;
+    lines.push(`Budget: ${fmt(total)} of ${fmt(budgets._all)} — on pace for ${fmt(pace)} (${pace<=budgets._all?"under":"over"}).`);
+  }
+  return lines.join("\n");
+}
+
+function buildLifeReport(p){
+  const r = periodRange(p);
+  const entries = journal.filter(e=>r.match(e.date));
+  const lines = [`Daybook — journal report, ${r.label}`, ""];
+  const dayMood = {}, dayMoodTs = {};
+  entries.forEach(e=>{ if (e.mood && (!dayMoodTs[e.date] || e.ts>dayMoodTs[e.date])){ dayMood[e.date]=e.mood; dayMoodTs[e.date]=e.ts; } });
+  const moods = Object.values(dayMood);
+  lines.push(`Entries: ${entries.length}${entries.length?` across ${new Set(entries.map(e=>e.date)).size} days`:""}`);
+  if (moods.length){
+    const counts = MOODS.filter(m=>moods.includes(m.n)).map(m=>`${m.label} ${moods.filter(x=>x===m.n).length}`);
+    lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5 — ${counts.join(", ")}`);
+  } else lines.push("Mood: not logged this period.");
+  const habitCounts = HABITS.map(h=>{
+    const days = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
+    return days ? `${h.name} ${days}×` : null;
+  }).filter(Boolean);
+  lines.push(habitCounts.length ? `Habits: ${habitCounts.join(" · ")}` : "Habits: none ticked this period.");
+  const ps = poops.filter(x=>r.match(x.date));
+  if (ps.length){
+    const byType = POOPS.filter(t=>ps.some(x=>x.type===t.id)).map(t=>`${t.label} ${ps.filter(x=>x.type===t.id).length}`);
+    const wentDays = new Set(ps.map(x=>x.date)).size;
+    lines.push(`Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days.`);
+  } else lines.push(`Poops: none logged this period.`);
+  return lines.join("\n");
+}
+
+function copyText(text, btn){
+  const done = ok => { const old = btn.textContent; btn.textContent = ok?"Copied ✓":"Copy failed"; setTimeout(()=>btn.textContent=old, 1600); };
+  navigator.clipboard.writeText(text).then(()=>done(true), ()=>done(false));
+}
+function emailText(subject, body){
+  if (!userEmail){
+    const input = $("#ms-mail");
+    input.focus();
+    return;
+  }
+  location.href = `mailto:${encodeURIComponent(userEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+document.querySelectorAll(".mailinput").forEach(inp=>{
+  inp.value = userEmail;
+  inp.addEventListener("input", ()=>{
+    userEmail = inp.value.trim();
+    save("db_email", userEmail);
+    document.querySelectorAll(".mailinput").forEach(o=>{ if(o!==inp) o.value = userEmail; });
+  });
+});
+
+function renderReports(){
+  $("#ms-week").setAttribute("aria-pressed", msPeriod==="week");
+  $("#ms-month").setAttribute("aria-pressed", msPeriod==="month");
+  $("#ls-week").setAttribute("aria-pressed", lsPeriod==="week");
+  $("#ls-month").setAttribute("aria-pressed", lsPeriod==="month");
+  $("#ms-text").textContent = buildMoneyReport(msPeriod);
+  $("#ls-text").textContent = buildLifeReport(lsPeriod);
+}
+$("#ms-week").onclick = ()=>{ msPeriod="week"; renderReports(); };
+$("#ms-month").onclick = ()=>{ msPeriod="month"; renderReports(); };
+$("#ls-week").onclick = ()=>{ lsPeriod="week"; renderReports(); };
+$("#ls-month").onclick = ()=>{ lsPeriod="month"; renderReports(); };
+$("#ms-copy").onclick = ()=>copyText($("#ms-text").textContent, $("#ms-copy"));
+$("#ls-copy").onclick = ()=>copyText($("#ls-text").textContent, $("#ls-copy"));
+$("#ms-email").onclick = ()=>emailText(`Daybook spending report — ${periodRange(msPeriod).label}`, $("#ms-text").textContent);
+$("#ls-email").onclick = ()=>emailText(`Daybook journal report — ${periodRange(lsPeriod).label}`, $("#ls-text").textContent);
+
+function renderReview(){
+  renderBudgets(); renderHabitStats(); renderInsights(); renderMonthReview(); renderReports();
+}
+$("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
+
+/* =====================================================
+   EXPORT / IMPORT
+===================================================== */
+const dlg = {
+  wrap:$("#dlg-wrap"), title:$("#dlg-title"), sub:$("#dlg-sub"), text:$("#dlg-text"),
+  status:$("#dlg-status"), primary:$("#dlg-primary"), download:$("#dlg-download"),
+  file:$("#dlg-file"), fileInput:$("#dlg-fileinput"),
+};
+let dlgMode = "export";
+const inNativeApp = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.store);
+
+function setStatus(msg, ok){ dlg.status.textContent = msg; dlg.status.className = "dlg-status" + (msg ? (ok?" ok":" err") : ""); }
+
+function openDlg(mode){
+  dlgMode = mode;
+  setStatus("");
+  if (mode === "export"){
+    dlg.title.textContent = "Export data";
+    dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, budgets. Copy it, then Import it on your other device.";
+    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops}, null, 2);
+    dlg.text.readOnly = true;
+    dlg.primary.textContent = "Copy to clipboard";
+    dlg.download.hidden = inNativeApp;
+    dlg.file.hidden = true;
+  } else {
+    dlg.title.textContent = "Import data";
+    dlg.sub.textContent = "Paste a Daybook export below (or choose the downloaded file). Imports merge — nothing on this device is deleted.";
+    dlg.text.value = "";
+    dlg.text.readOnly = false;
+    dlg.text.placeholder = "Paste your backup here…";
+    dlg.primary.textContent = "Import";
+    dlg.download.hidden = true;
+    dlg.file.hidden = inNativeApp;
+  }
+  dlg.wrap.hidden = false;
+  if (mode === "import") dlg.text.focus();
+}
+function closeDlg(){ dlg.wrap.hidden = true; }
+
+$("#d-export").onclick = ()=>openDlg("export");
+$("#d-import").onclick = ()=>openDlg("import");
+$("#dlg-close").onclick = closeDlg;
+$("#dlg-backdrop").onclick = closeDlg;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !dlg.wrap.hidden) closeDlg(); });
+
+dlg.download.onclick = ()=>{
+  try{
+    const blob = new Blob([dlg.text.value], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `daybook-backup-${todayIso()}.json`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    setStatus("Download started.", true);
+  }catch(e){ setStatus("Download failed here — use Copy to clipboard instead.", false); }
+};
+
+dlg.file.onclick = ()=>dlg.fileInput.click();
+dlg.fileInput.onchange = ()=>{
+  const f = dlg.fileInput.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{ dlg.text.value = r.result; setStatus(`Loaded ${f.name} — press Import.`, true); };
+  r.readAsText(f);
+  dlg.fileInput.value = "";
+};
+
+function mergeById(current, incoming){
+  const seen = new Map(current.map(x=>[x.id,x]));
+  let added = 0;
+  for (const x of incoming){
+    if (x && typeof x.id==="string" && !seen.has(x.id)){ seen.set(x.id,x); added++; }
+  }
+  return {list:[...seen.values()], added};
+}
+
+dlg.primary.onclick = async ()=>{
+  if (dlgMode === "export"){
+    let copied = false;
+    try{ await navigator.clipboard.writeText(dlg.text.value); copied = true; }catch(e){}
+    if (!copied){
+      try{ dlg.text.select(); copied = document.execCommand("copy"); }catch(e){}
+    }
+    setStatus(copied ? "Copied — now paste it into Import on your other device." : "Couldn't copy automatically — select the text and copy it manually.", copied);
+    return;
+  }
+  // import
+  let data;
+  try{ data = JSON.parse(dlg.text.value); }
+  catch(e){ setStatus("That doesn't parse as JSON — paste the whole export, from { to }.", false); return; }
+  if (!data || data.daybook!==1 || !Array.isArray(data.expenses) || !Array.isArray(data.journal)){
+    setStatus("That doesn't look like a Daybook export.", false); return;
+  }
+  const okExp = data.expenses.filter(x=>x && typeof x.id==="string" && typeof x.date==="string" && typeof x.amt==="number");
+  const okJnl = data.journal.filter(x=>x && typeof x.id==="string" && typeof x.date==="string");
+  const e = mergeById(expenses, okExp);
+  const j = mergeById(journal, okJnl);
+  expenses = e.list; journal = j.list;
+  let pAdded = 0;
+  if (Array.isArray(data.poops)){
+    const okP = data.poops.filter(x=>x && typeof x.id==="string" && typeof x.date==="string" && typeof x.type==="string");
+    const pm = mergeById(poops, okP);
+    poops = pm.list; pAdded = pm.added;
+    save("db_poops",poops);
+  }
+  if (data.budgets && typeof data.budgets==="object" && !Array.isArray(data.budgets)){
+    budgets = {...data.budgets, ...budgets};   // local values win on conflict
+    save("db_budgets",budgets);
+  }
+  save("db_expenses",expenses); save("db_journal",journal);
+  renderSpend(); renderJournal();
+  const added = e.added+j.added+pAdded;
+  setStatus(`Imported: ${e.added} expense${e.added===1?"":"s"}, ${j.added} journal entr${j.added===1?"y":"ies"}, ${pAdded} poop log${pAdded===1?"":"s"} added${added===0?" (everything was already here)":""}.`, true);
+};
+
+/* ---------- boot ---------- */
+renderCatChips();
+renderMoodPicker();
+renderHabitPicker();
+renderDayPick();
+updateJDateLabel();
+renderSpend();
+renderJournal();
+setTab(load("db_tab","spend"));
+</script>
