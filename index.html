@@ -417,11 +417,13 @@ svg circle[data-cat]{cursor:pointer}
 .poopchip .px:hover{color:var(--bad); background:var(--surface)}
 .pbuttons{margin-top:12px}
 .pix-cell.todaymark{box-shadow:0 0 0 1.5px var(--accent) inset}
-.pix-cell.heat-1{background:var(--accent); opacity:.28}
-.pix-cell.heat-2{background:var(--accent); opacity:.52}
-.pix-cell.heat-3{background:var(--accent); opacity:.76}
-.pix-cell.heat-4{background:var(--accent); opacity:1}
+.pix-cell.heat-1{background:color-mix(in srgb, var(--accent) 22%, var(--surface-2))}
+.pix-cell.heat-2{background:color-mix(in srgb, var(--accent) 48%, var(--surface-2))}
+.pix-cell.heat-3{background:color-mix(in srgb, var(--accent) 74%, var(--surface-2))}
+.pix-cell.heat-4{background:var(--accent)}
 .heat-note{font-size:12.5px; color:var(--ink-2); margin-top:10px; padding-top:10px; border-top:1px solid var(--hairline)}
+.heat-scale{display:flex; align-items:center; gap:4px; margin-top:12px; font-size:11px; color:var(--ink-3)}
+.heat-scale .heat-swatch{width:13px; height:13px; border-radius:3px; cursor:default}
 
 .emailrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-right:auto; min-width:0}
 .mailinput{background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:7px 10px; font-size:13.5px; width:200px; max-width:100%; min-width:0; text-transform:none; letter-spacing:normal; font-weight:400}
@@ -944,6 +946,9 @@ function moveTip(x,y){
   tip.style.top = Math.max(y,54)+"px";
 }
 function hideTip(){ tip.style.opacity=0; }
+// Touch devices never fire mouseleave on tap, so a tooltip shown by touch has nothing to hide it —
+// clear it on the next touch anywhere (fires before the tap's own mousemove, so it doesn't fight a fresh tooltip).
+document.addEventListener("touchstart", hideTip, {passive:true});
 
 /* ---------- tabs ---------- */
 const views = {spend:$("#view-spend"), journal:$("#view-journal"), review:$("#view-review")};
@@ -951,6 +956,7 @@ const tabButtons = document.querySelectorAll(".tabbtn");
 function setTab(which){
   if (which==="money" || which==="life") which = "review";   // migrate old saved tab
   if (!views[which]) which = "spend";
+  hideTip();
   tabButtons.forEach(b=>b.setAttribute("aria-current", b.dataset.tab===which ? "true" : "false"));
   for (const k in views) views[k].hidden = k!==which;
   save("db_tab",which);
@@ -2087,11 +2093,17 @@ function renderHeatmap(){
     }
     cells += `<div class="${cls}" data-heat="${iso}" data-heatamt="${amt}"></div>`;
   }
-  const swatches = [1,2,3,4].map(n=>`<span class="li"><span class="sw pix-cell heat-${n}" style="aspect-ratio:auto"></span>step ${n}</span>`).join("");
+  const scale = `<div class="heat-scale">Less
+    <span class="heat-swatch pix-cell none"></span>
+    <span class="heat-swatch pix-cell heat-1"></span>
+    <span class="heat-swatch pix-cell heat-2"></span>
+    <span class="heat-swatch pix-cell heat-3"></span>
+    <span class="heat-swatch pix-cell heat-4"></span>
+    More</div>`;
   $("#r-heatmap").innerHTML =
     `<div class="pix-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
      <div class="pix-grid">${cells}</div>
-     <div class="pix-legend">${swatches}<span class="li"><span class="sw pix-cell none" style="aspect-ratio:auto"></span>none</span></div>
+     ${scale}
      <div class="heat-note">${loggedDays ? `${noSpendDays} no-spend day${noSpendDays===1?"":"s"} this month` : `Nothing spent in ${MONTHS_LONG[heatMonth.getMonth()]} yet.`}</div>`;
   $("#r-heatmap").querySelectorAll("[data-heat]").forEach(c=>{
     c.addEventListener("mousemove", e=>{
