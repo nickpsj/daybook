@@ -413,10 +413,7 @@ svg circle[data-cat]{cursor:pointer}
 .poopchip .px{color:var(--ink-3); width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:11px}
 .poopchip .px:hover{color:var(--bad); background:var(--surface)}
 .pbuttons{margin-top:12px}
-.poop-scroll{max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding:2px 2px 2px 0; margin-top:2px}
-.poop-scroll .pix-grid{grid-template-columns:repeat(7,18px); justify-content:start; gap:2px}
-.poop-scroll .pix-cell{border-radius:4px}
-.poop-dow{grid-template-columns:repeat(7,18px); justify-content:start; gap:2px}
+.poop-scroll{display:flex; flex-direction:column; gap:3px; margin-top:2px}
 .pix-cell.todaymark{box-shadow:0 0 0 1.5px var(--accent) inset}
 
 .emailrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-right:auto; min-width:0}
@@ -623,7 +620,7 @@ svg circle[data-cat]{cursor:pointer}
       <div class="chartbody">
         <div class="ptoday" id="p-today"></div>
         <div class="chips pbuttons" id="p-buttons"></div>
-        <div class="pix-dow poop-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="pix-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
         <div class="poop-scroll" id="p-grid"></div>
       </div>
     </section>
@@ -1578,16 +1575,11 @@ function renderPoop(){
   renderPoopGrid(byDay);
 }
 
-/* --- poop log: scrollable Monday-first weekly grid --- */
+/* --- poop log: Monday-first weekly grid, last 3 weeks --- */
 function renderPoopGrid(byDay){
   const container = $("#p-grid");
   const curMonday = mondayOf(new Date());
-  let weeksBack = 8;
-  if (poops.length){
-    const earliest = poops.reduce((min,p)=>p.date<min?p.date:min, poops[0].date);
-    const diffWeeks = Math.round((curMonday - mondayOf(parseIso(earliest))) / (7*86400000));
-    weeksBack = Math.min(Math.max(diffWeeks+1, 8), 52);
-  }
+  const weeksBack = 3;
   const todayI = todayIso();
   let rows = "";
   for (let w=0; w<weeksBack; w++){
