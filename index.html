@@ -413,7 +413,6 @@ svg circle[data-cat]{cursor:pointer}
 .poopchip .px{color:var(--ink-3); width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:11px}
 .poopchip .px:hover{color:var(--bad); background:var(--surface)}
 .pbuttons{margin-top:12px}
-.poop-scroll{display:flex; flex-direction:column; gap:3px; margin-top:2px}
 .pix-cell.todaymark{box-shadow:0 0 0 1.5px var(--accent) inset}
 
 .emailrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-right:auto; min-width:0}
@@ -620,8 +619,7 @@ svg circle[data-cat]{cursor:pointer}
       <div class="chartbody">
         <div class="ptoday" id="p-today"></div>
         <div class="chips pbuttons" id="p-buttons"></div>
-        <div class="pix-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-        <div class="poop-scroll" id="p-grid"></div>
+        <div class="strip" id="p-strip"></div>
       </div>
     </section>
 
@@ -1556,10 +1554,10 @@ function renderPoop(){
   const byDay = {};
   poops.forEach(p=>(byDay[p.date]=byDay[p.date]||[]).push(p));
 
-  const week7 = [...Array(7)].map((_,i)=>daysAgoIso(6-i));
-  const weekN = week7.reduce((s,d)=>s+(byDay[d]||[]).length,0);
-  const wentDays = week7.filter(d=>(byDay[d]||[]).length).length;
-  $("#p-hint").textContent = weekN ? `${weekN} in the last 7 days · went on ${wentDays} of 7` : "tap a button below to log one";
+  const days14 = [...Array(14)].map((_,i)=>daysAgoIso(13-i));
+  const n14 = days14.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+  const went14 = days14.filter(d=>(byDay[d]||[]).length).length;
+  $("#p-hint").textContent = n14 ? `${n14} in the last 14 days · went on ${went14} of 14` : "tap a button below to log one";
 
   $("#p-buttons").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{
     poops.push({id:uid(), date:todayIso(), type:b.dataset.p, ts:Date.now()});
@@ -1572,43 +1570,23 @@ function renderPoop(){
     if (item) trashItem("poop", item);
     renderPoop(); renderReview();
   });
-  renderPoopGrid(byDay);
-}
 
-/* --- poop log: Monday-first weekly grid, last 3 weeks --- */
-function renderPoopGrid(byDay){
-  const container = $("#p-grid");
-  const curMonday = mondayOf(new Date());
-  const weeksBack = 3;
-  const todayI = todayIso();
-  let rows = "";
-  for (let w=0; w<weeksBack; w++){
-    const weekMon = new Date(curMonday); weekMon.setDate(weekMon.getDate()-w*7);
-    let cells = "";
-    for (let d=0; d<7; d++){
-      const day = new Date(weekMon); day.setDate(day.getDate()+d);
-      const iso = isoDate(day);
-      const list = byDay[iso];
-      const cls = ["pix-cell"];
-      let style = "";
-      if (iso>todayI) cls.push("future");
-      else if (list && list.length){
-        const last = [...list].sort((a,b)=>b.ts-a.ts)[0];
-        style = `background:var(${poopById(last.type).v})`;
-      } else cls.push("none");
-      if (iso===todayI) cls.push("todaymark");
-      const names = list ? list.map(p=>poopById(p.type).label).join(", ") : "none logged";
-      cells += `<div class="${cls.join(" ")}" style="${style}" data-pgd="${iso}" data-pgn="${esc(names)}"></div>`;
-    }
-    rows += `<div class="pix-grid pgrid-row">${cells}</div>`;
-  }
-  container.innerHTML = rows;
-  container.querySelectorAll("[data-pgd]").forEach(c=>{
-    c.addEventListener("mousemove", e=>{
-      const d = parseIso(c.dataset.pgd);
-      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${c.dataset.pgn}</span>`, e.clientX, e.clientY);
+  $("#p-strip").innerHTML = days14.map(day=>{
+    const list = byDay[day];
+    const d = parseIso(day);
+    const last = list && list.length ? [...list].sort((a,b)=>b.ts-a.ts)[0] : null;
+    const t = last ? poopById(last.type) : null;
+    const names = list ? list.map(p=>poopById(p.type).label).join(", ") : "";
+    return `<div class="sday${day===todayIso()?" today":""}" data-day="${day}" data-poops="${esc(names)}">
+      <span class="b${t?" has":""}" style="${t?`background:var(${t.v})`:""}"></span>
+      <span class="l">${d.getDate()}</span></div>`;
+  }).join("");
+  $("#p-strip").querySelectorAll(".sday").forEach(el=>{
+    el.addEventListener("mousemove",e=>{
+      const d = parseIso(el.dataset.day);
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${el.dataset.poops||"none logged"}</span>`, e.clientX, e.clientY);
     });
-    c.addEventListener("mouseleave", hideTip);
+    el.addEventListener("mouseleave",hideTip);
   });
 }
 
