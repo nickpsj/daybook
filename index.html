@@ -370,13 +370,14 @@ svg circle[data-cat]{cursor:pointer}
 .pix-nav .cal-mlabel{font-size:12.5px; min-width:74px; text-align:center}
 .pix-dow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:9.5px; color:var(--ink-3); font-weight:600; margin:10px 0 4px; gap:3px}
 .pix-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
-.pix-cell{aspect-ratio:1; border-radius:5px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:transparent}
-.pix-cell.pad{visibility:hidden}
+.pix-cell{aspect-ratio:1; border-radius:5px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:transparent; cursor:pointer}
+.pix-cell.pad{visibility:hidden; cursor:default}
+.pix-cell.future{cursor:default}
 .pix-cell.none{background:transparent; border:1px solid var(--hairline)}
 .pix-cell.future{background:transparent; border:1px dashed var(--hairline); opacity:.5}
 .pix-legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:12px; font-size:11.5px; color:var(--ink-2)}
 .pix-legend .li{display:inline-flex; align-items:center; gap:5px}
-.pix-legend .sw{width:10px; height:10px; border-radius:3px}
+.pix-legend .sw{width:10px; height:10px; border-radius:3px; cursor:default}
 
 /* ---------- review: poop health ---------- */
 .ph-line{font-size:13.5px; margin-top:12px}
@@ -404,6 +405,8 @@ svg circle[data-cat]{cursor:pointer}
 .fact .v{font-weight:600; margin-top:3px; display:flex; align-items:center; gap:7px}
 .fact .v .dot{width:9px; height:9px; border-radius:50%}
 .fact .s{font-size:12px; color:var(--ink-3); margin-top:1px; display:block}
+.fact.tap{display:block; width:100%; text-align:left; border-radius:8px; transition:background .12s}
+.fact.tap:hover{background:var(--surface-2)}
 
 /* ---------- poop log ---------- */
 .ptoday{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:10px; font-size:13.5px; color:var(--ink-2)}
@@ -414,6 +417,11 @@ svg circle[data-cat]{cursor:pointer}
 .poopchip .px:hover{color:var(--bad); background:var(--surface)}
 .pbuttons{margin-top:12px}
 .pix-cell.todaymark{box-shadow:0 0 0 1.5px var(--accent) inset}
+.pix-cell.heat-1{background:var(--accent); opacity:.28}
+.pix-cell.heat-2{background:var(--accent); opacity:.52}
+.pix-cell.heat-3{background:var(--accent); opacity:.76}
+.pix-cell.heat-4{background:var(--accent); opacity:1}
+.heat-note{font-size:12.5px; color:var(--ink-2); margin-top:10px; padding-top:10px; border-top:1px solid var(--hairline)}
 
 .emailrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-right:auto; min-width:0}
 .mailinput{background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:7px 10px; font-size:13.5px; width:200px; max-width:100%; min-width:0; text-transform:none; letter-spacing:normal; font-weight:400}
@@ -667,6 +675,18 @@ svg circle[data-cat]{cursor:pointer}
 
       <section class="card">
         <div class="card-h">
+          <h3>Month in money</h3>
+          <span class="pix-nav">
+            <button class="navbtn" id="heat-prev" aria-label="Previous month" type="button">‹</button>
+            <span class="cal-mlabel" id="heat-mlabel"></span>
+            <button class="navbtn" id="heat-next" aria-label="Next month" type="button">›</button>
+          </span>
+        </div>
+        <div class="chartbody" id="r-heatmap"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
           <h3>Monthly recap</h3>
           <span class="pix-nav">
             <button class="navbtn" id="rc-prev" aria-label="Previous month" type="button">‹</button>
@@ -712,6 +732,11 @@ svg circle[data-cat]{cursor:pointer}
           <div class="chartbody" id="r-insights"></div>
         </section>
       </div>
+
+      <section class="card">
+        <div class="card-h"><h3>Records</h3><span class="hint">all time</span></div>
+        <div class="chartbody" id="r-records"></div>
+      </section>
     </div>
 
     <section class="card">
@@ -1827,6 +1852,95 @@ function renderInsights(){
     : `<p class="ins-none">No strong patterns yet — they'll sharpen as you log more days.</p>`);
 }
 
+/* --- records: personal bests, computed over all-time data --- */
+function longestRun(dateSet){
+  let best=0, run=0, prev=null;
+  for (const d of [...dateSet].sort()){
+    if (prev){ const p=parseIso(prev); p.setDate(p.getDate()+1); run = isoDate(p)===d ? run+1 : 1; }
+    else run=1;
+    best=Math.max(best,run); prev=d;
+  }
+  return best;
+}
+function weekRangeLabel(mondayIso){
+  const s = parseIso(mondayIso), e = new Date(s); e.setDate(e.getDate()+6);
+  return s.getMonth()===e.getMonth()
+    ? `${MONTHS_SHORT[s.getMonth()]} ${s.getDate()}–${e.getDate()}`
+    : `${MONTHS_SHORT[s.getMonth()]} ${s.getDate()} – ${MONTHS_SHORT[e.getMonth()]} ${e.getDate()}`;
+}
+function recordFact(k,v,s){
+  return `<div class="fact"><span class="k">${esc(k)}</span><div class="v num">${v}</div><span class="s">${esc(s)}</span></div>`;
+}
+function renderRecords(){
+  const el = $("#r-records");
+  if (!el) return;
+  const facts = [];
+  const curWeekIso = isoDate(mondayOf(new Date()));
+
+  const journalDates = new Set(journal.map(e=>e.date));
+  if (journalDates.size>=14){
+    const best = longestRun(journalDates);
+    if (best>=3) facts.push(recordFact("Longest journal streak", `${best} days`, "all time"));
+  }
+
+  const dayH = dayHabitSets();
+  let bestHabit = null;
+  for (const h of activeHabits()){
+    const ds = new Set(Object.keys(dayH).filter(d=>dayH[d].has(h.id)));
+    if (ds.size<3) continue;
+    const best = longestRun(ds);
+    if (!bestHabit || best>bestHabit.best) bestHabit = {h, best};
+  }
+  if (bestHabit && bestHabit.best>=3) facts.push(recordFact("Best habit streak", `${bestHabit.best} days`, bestHabit.h.name));
+
+  if (journal.length>=5){
+    facts.push(recordFact("Journal entries", journal.length, `across ${journalDates.size} days`));
+  }
+
+  const weekSpend = {};
+  expenses.forEach(e=>{ const wk = isoDate(mondayOf(parseIso(e.date))); weekSpend[wk] = (weekSpend[wk]||0) + e.amt; });
+  const completeSpendWeeks = Object.entries(weekSpend).filter(([wk])=>wk!==curWeekIso);
+  if (completeSpendWeeks.length>=3){
+    const lowest = [...completeSpendWeeks].sort((a,b)=>a[1]-b[1])[0];
+    facts.push(recordFact("Lowest-spend week", fmt(lowest[1]), weekRangeLabel(lowest[0])));
+  }
+
+  const dayMoodLatest = {}, dmTs = {};
+  journal.forEach(e=>{ if(e.mood && (!dmTs[e.date]||e.ts>dmTs[e.date])){ dayMoodLatest[e.date]=e.mood; dmTs[e.date]=e.ts; } });
+  const weekMood = {};
+  Object.entries(dayMoodLatest).forEach(([date,mood])=>{
+    const wk = isoDate(mondayOf(parseIso(date)));
+    weekMood[wk] = weekMood[wk] || {sum:0,n:0};
+    weekMood[wk].sum += mood; weekMood[wk].n++;
+  });
+  const completeMoodWeeks = Object.entries(weekMood).filter(([wk,v])=>wk!==curWeekIso && v.n>=3);
+  if (completeMoodWeeks.length>=2){
+    const best = completeMoodWeeks.map(([wk,v])=>[wk, v.sum/v.n]).sort((a,b)=>b[1]-a[1])[0];
+    facts.push(recordFact("Best mood week", `${best[1].toFixed(1)}/5`, weekRangeLabel(best[0])));
+  }
+
+  if (expenses.length){
+    const firstExpDate = expenses.reduce((min,e)=>e.date<min?e.date:min, expenses[0].date);
+    const spendDates = new Set(expenses.map(e=>e.date));
+    const start = parseIso(firstExpDate);
+    const end = new Date(); end.setDate(end.getDate()-1);
+    const totalTrackedDays = Math.round((end-start)/86400000)+1;
+    if (totalTrackedDays>=14){
+      let run=0, best=0;
+      for (let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+        if (!spendDates.has(isoDate(d))){ run++; best=Math.max(best,run); } else run=0;
+      }
+      if (best>=3) facts.push(recordFact("Longest no-spend run", `${best} days`, "since you started tracking"));
+    }
+  }
+
+  if (!facts.length){
+    el.innerHTML = `<div class="empty">Keep logging — personal records show up once there's enough history.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="facts">${facts.join("")}</div>`;
+}
+
 function renderHighlights(){
   const el = $("#r-highlights");
   if (!el) return;
@@ -1838,14 +1952,16 @@ function renderHighlights(){
     (e.gratitude||[]).forEach(g=>{ if(g) grats.push({text:g, date:e.date}); });
     if (e.win) wins.push({text:e.win, date:e.date});
   });
+  const weekTodos = todos.filter(t=>days.includes(t.date));
+  const todoLine = weekTodos.length ? `<div class="ph-line" style="margin-top:0; margin-bottom:12px">To-dos: <span class="num">${weekTodos.filter(t=>t.done).length} of ${weekTodos.length}</span> done this week</div>` : "";
   if (!grats.length && !wins.length){
-    el.innerHTML = `<div class="empty">Log a gratitude or a win with your next entry and it'll show up here.</div>`;
+    el.innerHTML = todoLine || `<div class="empty">Log a gratitude or a win with your next entry and it'll show up here.</div>`;
     return;
   }
   const group = (arr,label)=> arr.length ? `<div class="hl-group"><div class="hl-label">${label}</div>${
     arr.slice(0,6).map(x=>`<div class="hl-item"><span>${esc(x.text)}</span><span class="hl-date">${dayLabel(x.date)}</span></div>`).join("")
   }</div>` : "";
-  el.innerHTML = group(grats,"Grateful for") + group(wins,"Wins");
+  el.innerHTML = todoLine + group(grats,"Grateful for") + group(wins,"Wins");
 }
 
 /* --- money trends: am I doing better? --- */
@@ -1923,10 +2039,81 @@ function renderPixels(){
       showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${c.dataset.pm}</span>`, e.clientX, e.clientY);
     });
     c.addEventListener("mouseleave", hideTip);
+    if (c.classList.contains("future")) return;
+    c.addEventListener("click", ()=>{
+      const iso = c.dataset.pix;
+      const existing = [...journal].filter(e=>e.date===iso).sort((a,b)=>b.ts-a.ts)[0];
+      setTab("journal");
+      if (existing) startEditEntry(existing.id);
+      else {
+        selJDate = iso; weekStart = mondayOf(parseIso(iso));
+        renderWeekNav(); updateJDateLabel(); renderTodos();
+      }
+      setTimeout(()=>document.querySelector(".composer")?.scrollIntoView({behavior:"smooth", block:"start"}), 50);
+    });
   });
 }
 $("#pix-prev").onclick = ()=>{ pixMonth.setMonth(pixMonth.getMonth()-1); renderPixels(); };
 $("#pix-next").onclick = ()=>{ if(!$("#pix-next").disabled){ pixMonth.setMonth(pixMonth.getMonth()+1); renderPixels(); } };
+
+/* --- month in money: spending heatmap --- */
+let heatMonth = new Date(); heatMonth.setDate(1);
+function renderHeatmap(){
+  $("#heat-mlabel").textContent = `${MONTHS_SHORT[heatMonth.getMonth()]} ${heatMonth.getFullYear()}`;
+  $("#heat-next").disabled = monthKey(heatMonth) >= monthKey(new Date());
+  const key = monthKey(heatMonth);
+  const daySpend = {};
+  expenses.filter(e=>e.date.startsWith(key)).forEach(e=>daySpend[e.date]=(daySpend[e.date]||0)+e.amt);
+  const max = Math.max(0, ...Object.values(daySpend));
+  const off = (new Date(heatMonth.getFullYear(), heatMonth.getMonth(), 1).getDay()+6)%7;
+  const dim = new Date(heatMonth.getFullYear(), heatMonth.getMonth()+1, 0).getDate();
+  const todayI = todayIso();
+  let noSpendDays = 0, loggedDays = 0;
+  let cells = "";
+  for (let i=0;i<off;i++) cells += `<div class="pix-cell pad"></div>`;
+  for (let d=1; d<=dim; d++){
+    const iso = `${heatMonth.getFullYear()}-${pad(heatMonth.getMonth()+1)}-${pad(d)}`;
+    const amt = daySpend[iso] || 0;
+    let cls = "pix-cell";
+    if (iso===todayI) cls += " todaymark";
+    if (iso>todayI) cls += " future";
+    else {
+      loggedDays++;
+      if (amt<=0) { cls += " none"; noSpendDays++; }
+      else {
+        const r = max>0 ? amt/max : 0;
+        cls += r>0.75 ? " heat-4" : r>0.5 ? " heat-3" : r>0.25 ? " heat-2" : " heat-1";
+      }
+    }
+    cells += `<div class="${cls}" data-heat="${iso}" data-heatamt="${amt}"></div>`;
+  }
+  const swatches = [1,2,3,4].map(n=>`<span class="li"><span class="sw pix-cell heat-${n}" style="aspect-ratio:auto"></span>step ${n}</span>`).join("");
+  $("#r-heatmap").innerHTML =
+    `<div class="pix-dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+     <div class="pix-grid">${cells}</div>
+     <div class="pix-legend">${swatches}<span class="li"><span class="sw pix-cell none" style="aspect-ratio:auto"></span>none</span></div>
+     <div class="heat-note">${loggedDays ? `${noSpendDays} no-spend day${noSpendDays===1?"":"s"} this month` : `Nothing spent in ${MONTHS_LONG[heatMonth.getMonth()]} yet.`}</div>`;
+  $("#r-heatmap").querySelectorAll("[data-heat]").forEach(c=>{
+    c.addEventListener("mousemove", e=>{
+      const d = parseIso(c.dataset.heat);
+      const amt = +c.dataset.heatamt;
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${amt>0?fmt(amt):"no spending"}</span>`, e.clientX, e.clientY);
+    });
+    c.addEventListener("mouseleave", hideTip);
+    if (c.classList.contains("future")) return;
+    c.addEventListener("click", ()=>{
+      const iso = c.dataset.heat;
+      setTab("spend");
+      const d = parseIso(iso);
+      viewMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      catFilter = null; eQuery = "";
+      renderSpend();
+      setTimeout(()=>$("#ledger")?.scrollIntoView({behavior:"smooth", block:"start"}), 50);
+    });
+  });
+}
+$("#heat-prev").onclick = ()=>{ heatMonth.setMonth(heatMonth.getMonth()-1); renderHeatmap(); };
+$("#heat-next").onclick = ()=>{ if(!$("#heat-next").disabled){ heatMonth.setMonth(heatMonth.getMonth()+1); renderHeatmap(); } };
 
 /* --- poop health --- */
 function renderPoopHealth(){
@@ -1950,11 +2137,33 @@ function renderPoopHealth(){
   if (a>=b+2) note = "Hard/Loose days are trending up vs the week before — worth keeping an eye on.";
   else if (a===0 && b===0) note = "No Hard or Loose days in two weeks — looking good.";
   else note = `Hard/Loose days: ${a} this week vs ${b} the week before.`;
+
+  const TOD_BUCKETS = [
+    {label:"Morning",   test:h=>h>=5 && h<12,  op:.32},
+    {label:"Afternoon", test:h=>h>=12 && h<18, op:.56},
+    {label:"Evening",   test:h=>h>=18 && h<23, op:.8},
+    {label:"Night",     test:h=>h<5 || h>=23,  op:1},
+  ];
+  const todCounts = TOD_BUCKETS.map(b=>({b, n:inWin.filter(p=>b.test(new Date(p.ts).getHours())).length})).filter(x=>x.n);
+  let todBlock = "";
+  if (todCounts.length){
+    const todBar = todCounts.map(x=>`<i style="width:${(x.n/total*100).toFixed(1)}%; background:var(--accent); opacity:${x.b.op}"></i>`).join("");
+    const todLegend = todCounts.map(x=>`<span class="li"><span class="dot" style="background:var(--accent); opacity:${x.b.op}"></span>${x.b.label} ${x.n}</span>`).join("");
+    const top = [...todCounts].sort((a,b)=>b.n-a.n)[0];
+    const topPct = Math.round(top.n/total*100);
+    const todNote = total>=5 && topPct>=50 ? `Mostly ${top.b.label.toLowerCase()} (${topPct}%).` : "";
+    todBlock = `<div class="ph-line">By time of day</div>
+     <div class="ph-bar">${todBar}</div>
+     <div class="ph-legend">${todLegend}</div>
+     ${todNote?`<div class="ph-note">${todNote}</div>`:""}`;
+  }
+
   el.innerHTML =
     `<div class="ph-line">Went on <span class="num">${wentDays.size} of 14</span> days · longest gap <span class="num">${maxGap}</span> day${maxGap===1?"":"s"}</div>
      <div class="ph-bar">${bar}</div>
      <div class="ph-legend">${legend}</div>
-     <div class="ph-note">${note}</div>`;
+     <div class="ph-note">${note}</div>
+     ${todBlock}`;
 }
 
 /* --- monthly recap card (with month navigation) --- */
@@ -1981,10 +2190,18 @@ function renderMonthReview(){
   const byCat = {};
   list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
   const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-  facts.push(`<div class="fact"><span class="k">Biggest expense</span><div class="v num">${fmt(biggest.amt)}</div><span class="s">${esc(biggest.note||catById(biggest.cat).name)} — ${dayLabel(biggest.date)}</span></div>`);
+  facts.push(`<button class="fact tap" data-factgo="expense" data-factq="${esc(biggest.note||catById(biggest.cat).name)}"><span class="k">Biggest expense</span><div class="v num">${fmt(biggest.amt)}</div><span class="s">${esc(biggest.note||catById(biggest.cat).name)} — ${dayLabel(biggest.date)}</span></button>`);
   facts.push(`<div class="fact"><span class="k">Busiest day</span><div class="v num">${fmt(busiest[1])}</div><span class="s">${dayLabel(busiest[0])}</span></div>`);
-  facts.push(`<div class="fact"><span class="k">Top category</span><div class="v"><span class="dot" style="background:var(${catById(top[0]).v})"></span>${esc(catById(top[0]).name)}</div><span class="s">${fmt(top[1])}${sofar}</span></div>`);
+  facts.push(`<button class="fact tap" data-factgo="cat" data-factcat="${top[0]}"><span class="k">Top category</span><div class="v"><span class="dot" style="background:var(${catById(top[0]).v})"></span>${esc(catById(top[0]).name)}</div><span class="s">${fmt(top[1])}${sofar}</span></button>`);
   el.innerHTML = `<div class="facts">${facts.join("")}</div>`;
+  el.querySelectorAll("[data-factgo]").forEach(b=>b.onclick=()=>{
+    setTab("spend");
+    viewMonth = new Date(recapMonth.getFullYear(), recapMonth.getMonth(), 1);
+    if (b.dataset.factgo==="expense"){ catFilter=null; eQuery=b.dataset.factq; $("#e-search").value=eQuery; }
+    else { eQuery=""; $("#e-search").value=""; catFilter=b.dataset.factcat; }
+    renderSpend();
+    setTimeout(()=>$("#ledger")?.scrollIntoView({behavior:"smooth", block:"start"}), 50);
+  });
 }
 $("#rc-prev").onclick = ()=>{ recapMonth.setMonth(recapMonth.getMonth()-1); renderMonthReview(); };
 $("#rc-next").onclick = ()=>{ if(!$("#rc-next").disabled){ recapMonth.setMonth(recapMonth.getMonth()+1); renderMonthReview(); } };
@@ -2074,15 +2291,27 @@ function buildCombinedReport(){
     const cmp = pm.length ? (avg(moods)>avg(pm)+0.05 ? ` (up from ${avg(pm).toFixed(1)})` : avg(moods)<avg(pm)-0.05 ? ` (down from ${avg(pm).toFixed(1)})` : ` (steady vs ${prevLabel})`) : "";
     lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5${cmp} — ${counts.join(", ")}`);
   } else lines.push("Mood: not logged this period.");
-  const grats = [], wins = [];
-  entries.forEach(e=>{ (e.gratitude||[]).forEach(g=>{ if(g) grats.push(g); }); if (e.win) wins.push(e.win); });
+  const grats = [], wins = [], challenges = [], forwards = [];
+  entries.forEach(e=>{
+    (e.gratitude||[]).forEach(g=>{ if(g) grats.push(g); });
+    if (e.win) wins.push(e.win);
+    if (e.challenge) challenges.push(e.challenge);
+    if (e.forward) forwards.push(e.forward);
+  });
   if (grats.length) lines.push(`Grateful for: ${grats.slice(0,6).join(" · ")}`);
   if (wins.length) lines.push(`Wins: ${wins.slice(0,6).join(" · ")}`);
+  if (challenges.length) lines.push(`Hard parts: ${challenges.slice(0,6).join(" · ")}`);
+  if (forwards.length) lines.push(`Looking forward to: ${forwards.slice(0,6).join(" · ")}`);
   const habitCounts = habits.map(h=>{
     const days = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
     return days ? `${h.name} ${days}×` : null;
   }).filter(Boolean);
   lines.push(habitCounts.length ? `Habits: ${habitCounts.join(" · ")}` : "Habits: none ticked this period.");
+  const periodTodos = todos.filter(t=>r.match(t.date));
+  if (periodTodos.length){
+    const done = periodTodos.filter(t=>t.done).length;
+    lines.push(`To-dos: completed ${done} of ${periodTodos.length}`);
+  }
   const ps = poops.filter(x=>r.match(x.date));
   if (ps.length){
     const byType = POOPS.filter(t=>ps.some(x=>x.type===t.id)).map(t=>`${t.label} ${ps.filter(x=>x.type===t.id).length}`);
@@ -2164,7 +2393,7 @@ $("#rp-email").onclick = ()=>emailText(`Daybook report — ${periodRange(repPeri
 
 function renderReview(){
   renderBudgets(); renderMoneyTrends(); renderHabitStats(); renderInsights(); renderMonthReview();
-  renderReport(); renderHighlights(); renderPixels(); renderPoopHealth();
+  renderReport(); renderHighlights(); renderPixels(); renderPoopHealth(); renderHeatmap(); renderRecords();
 }
 $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 
