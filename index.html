@@ -596,6 +596,9 @@ svg circle[data-cat]{cursor:pointer}
       <div class="jlabel">How are you feeling?</div>
       <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
 
+      <div class="jlabel">Gout flare?</div>
+      <div class="moods" id="j-gout" role="group" aria-label="Gout flare severity"></div>
+
       <div class="field" style="margin:8px 0 16px">
         <label for="j-g1">Grateful for</label>
         <input id="j-g1" type="text" placeholder="What are you grateful for today?" maxlength="80">
@@ -854,6 +857,13 @@ const MOODS = [
 ];
 const MOOD_LEGACY = {2:{n:2,label:"Low",v:"--mood-2"}};   // removed from picker, kept for old entries
 const moodByN = n => MOODS.find(m=>m.n===n) || MOOD_LEGACY[n];
+
+const GOUT_LEVELS = [
+  {id:"mild",     label:"Mild",     v:"--mood-3"},
+  {id:"moderate", label:"Moderate", v:"--cat-3"},
+  {id:"severe",   label:"Severe",   v:"--mood-1"},
+];
+const goutById = id => GOUT_LEVELS.find(g=>g.id===id);
 
 const HABIT_COLORS = ["--cat-1","--cat-3","--cat-5","--cat-2","--cat-8","--cat-6","--cat-7","--cat-4"];
 const MAX_HABITS = 8;
@@ -1399,6 +1409,15 @@ function renderMoodPicker(){
   });
 }
 
+let selGout = "";
+function renderGoutPicker(){
+  $("#j-gout").innerHTML = GOUT_LEVELS.map(g=>
+    `<button class="mood" data-g="${g.id}" aria-pressed="${g.id===selGout}" style="--c:var(${g.v})"><span class="dot"></span>${g.label}</button>`).join("");
+  $("#j-gout").querySelectorAll(".mood").forEach(b=>b.onclick=()=>{
+    selGout = (b.dataset.g===selGout) ? "" : b.dataset.g; renderGoutPicker();
+  });
+}
+
 let selHabits = new Set();
 let habitEditMode = false;
 
@@ -1467,19 +1486,20 @@ function clearCheckin(){
 $("#j-save").onclick = ()=>{
   const text = jText.value.trim();
   const {gratitude, win, challenge, forward} = checkinFields();
-  const hasAny = text || selMood || selHabits.size || gratitude.length || win || challenge || forward;
+  const hasAny = text || selMood || selGout || selHabits.size || gratitude.length || win || challenge || forward;
   if (!hasAny){ jText.focus(); return; }
   if (editingEntry){
     const e = journal.find(x=>x.id===editingEntry);
-    if (e){ e.text=text; e.mood=selMood; e.habits=[...selHabits]; e.gratitude=gratitude; e.win=win; e.challenge=challenge; e.forward=forward; if(text && !e.prompt) e.prompt=curPrompt; }
+    if (e){ e.text=text; e.mood=selMood; e.goutSeverity=selGout; e.habits=[...selHabits]; e.gratitude=gratitude; e.win=win; e.challenge=challenge; e.forward=forward; if(text && !e.prompt) e.prompt=curPrompt; }
     stopEditEntry();
   } else {
-    journal.push({id:uid(), date:selJDate, mood:selMood, habits:[...selHabits], gratitude, win, challenge, forward, prompt:text?curPrompt:"", text, ts:Date.now()});
+    journal.push({id:uid(), date:selJDate, mood:selMood, goutSeverity:selGout, habits:[...selHabits], gratitude, win, challenge, forward, prompt:text?curPrompt:"", text, ts:Date.now()});
   }
   save("db_journal",journal);
   jText.value=""; $("#j-count").textContent="";
   clearCheckin();
   selMood=0; renderMoodPicker();
+  selGout=""; renderGoutPicker();
   selHabits.clear(); renderHabitPicker();
   selJDate = todayIso(); weekStart = mondayOf(new Date()); renderWeekNav(); updateJDateLabel(); renderTodos();
   $("#j-shuffle").click();
@@ -1493,6 +1513,7 @@ function startEditEntry(id){
   jText.value = e.text || "";
   jText.dispatchEvent(new Event("input"));
   selMood = e.mood || 0; renderMoodPicker();
+  selGout = e.goutSeverity || ""; renderGoutPicker();
   selHabits = new Set(e.habits || []); renderHabitPicker();
   $("#j-g1").value = (e.gratitude||[])[0] || "";
   $("#j-win").value = e.win || "";
@@ -1518,6 +1539,7 @@ $("#j-cancel").onclick = ()=>{
   jText.value=""; $("#j-count").textContent="";
   clearCheckin();
   selMood=0; renderMoodPicker();
+  selGout=""; renderGoutPicker();
   selHabits.clear(); renderHabitPicker();
   stopEditEntry();
 };
@@ -1683,6 +1705,7 @@ function renderList(){
   }
   el.innerHTML = list.map(e=>{
     const m = e.mood ? moodByN(e.mood) : null;
+    const g = e.goutSeverity ? goutById(e.goutSeverity) : null;
     const habitChips = (e.habits||[]).map(id=>{
       const h = habitById(id);
       return h ? `<span class="habitchip" data-fh="${h.id}" title="Show all ${h.name} days"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>` : "";
@@ -1696,7 +1719,8 @@ function renderList(){
     return `<div class="jentry">
       <div class="body">
         <div class="meta"><span class="d">${dayLabel(e.date)}</span>${
-          m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${habitChips}</div>
+          m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${
+          g?`<span class="moodchip"><span class="dot" style="background:var(${g.v})"></span>Gout: ${g.label}</span>`:""}${habitChips}</div>
         ${ci.join("")}
         ${e.prompt?`<div class="prompt-echo">${highlight(esc(e.prompt),query)}</div>`:""}
         ${e.text?`<div class="txt">${highlight(esc(e.text),query)}</div>`:""}
@@ -2330,6 +2354,12 @@ function buildCombinedReport(){
     const wentDays = new Set(ps.map(x=>x.date)).size;
     lines.push(`Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days.`);
   } else lines.push(`Poops: none logged this period.`);
+  const goutEntries = entries.filter(e=>e.goutSeverity);
+  if (goutEntries.length){
+    const bySeverity = GOUT_LEVELS.filter(g=>goutEntries.some(e=>e.goutSeverity===g.id))
+      .map(g=>`${g.label} ${goutEntries.filter(e=>e.goutSeverity===g.id).length}`);
+    lines.push(`Gout: ${goutEntries.length} flare${goutEntries.length===1?"":"s"} this period (${bySeverity.join(", ")})`);
+  } else lines.push(`Gout: none this period.`);
 
   /* — Money — */
   lines.push("", "— Money —");
@@ -2642,6 +2672,7 @@ purgeTrash();
 renderBinLink();
 renderCatChips();
 renderMoodPicker();
+renderGoutPicker();
 renderHabitPicker();
 renderWeekNav();
 updateJDateLabel();
