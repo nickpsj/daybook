@@ -649,14 +649,25 @@ svg circle[data-cat]{cursor:pointer}
       <div class="chartbody">
         <div class="ptoday" id="p-today"></div>
         <div class="chips pbuttons" id="p-buttons"></div>
-        <div class="strip" id="p-strip"></div>
       </div>
+      <div class="monthnav" style="justify-content:center; padding:2px 18px 0">
+        <button class="navbtn" id="p-wprev" aria-label="Previous week" type="button">‹</button>
+        <span class="cal-mlabel" id="p-wlabel" style="font-size:13.5px"></span>
+        <button class="navbtn" id="p-wnext" aria-label="Next week" type="button">›</button>
+      </div>
+      <div class="strip" id="p-strip"></div>
     </section>
 
     <section class="card">
-      <div class="card-h"><h3>Mood, last 14 days</h3><span class="hint" id="strip-hint"></span></div>
+      <div class="card-h"><h3>Mood</h3></div>
+      <div class="monthnav" style="justify-content:center; padding:12px 18px 0">
+        <button class="navbtn" id="m-wprev" aria-label="Previous week" type="button">‹</button>
+        <span class="cal-mlabel" id="m-wlabel" style="font-size:13.5px"></span>
+        <button class="navbtn" id="m-wnext" aria-label="Next week" type="button">›</button>
+      </div>
       <div class="strip" id="strip"></div>
       <div class="hlegend" id="strip-legend"></div>
+      <div style="font-size:12.5px; color:var(--ink-3); padding:0 18px 14px" id="strip-hint"></div>
     </section>
 
     <section class="card" id="j-flash" hidden>
@@ -1558,9 +1569,13 @@ $("#j-cancel").onclick = ()=>{
 };
 
 /* --- mood strip --- */
+let moodWeekOff = 0, poopWeekOff = 0;   // 0 = current week, 1 = week before, ...
 function renderStrip(){
-  const days = [];
-  for (let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(isoDate(d)); }
+  const start = mondayOf(new Date()); start.setDate(start.getDate() - moodWeekOff*7);
+  const days = [...Array(7)].map((_,i)=>{ const d=new Date(start); d.setDate(d.getDate()+i); return isoDate(d); });
+  $("#m-wlabel").textContent = weekRangeLabel(isoDate(start));
+  $("#m-wnext").disabled = moodWeekOff===0;
+
   const latestMood = {};
   journal.forEach(e=>{ if(e.mood && (!latestMood[e.date] || e.ts>latestMood[e.date].ts)) latestMood[e.date]=e; });
   const dayHabits = {};
@@ -1579,8 +1594,8 @@ function renderStrip(){
   $("#strip-legend").innerHTML = activeHabits().map(h=>
     `<span class="li"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>`).join("");
 
-  const logged = Object.keys(latestMood).filter(d=>days.includes(d)).length;
-  $("#strip-hint").textContent = logged ? `${logged} of 14 days logged` : "log a mood with an entry";
+  const logged = days.filter(d=>latestMood[d]).length;
+  $("#strip-hint").textContent = logged ? `${logged} of 7 days logged` : "log a mood with an entry";
 
   $("#strip").querySelectorAll(".sday").forEach(el=>{
     el.addEventListener("mousemove",e=>{
@@ -1591,6 +1606,8 @@ function renderStrip(){
     el.addEventListener("mouseleave",hideTip);
   });
 }
+$("#m-wprev").onclick = ()=>{ moodWeekOff++; renderStrip(); };
+$("#m-wnext").onclick = ()=>{ if(moodWeekOff>0){ moodWeekOff--; renderStrip(); } };
 
 /* --- flashback --- */
 function renderFlash(){
@@ -1638,10 +1655,13 @@ function renderPoop(){
   const byDay = {};
   poops.forEach(p=>(byDay[p.date]=byDay[p.date]||[]).push(p));
 
-  const days14 = [...Array(14)].map((_,i)=>daysAgoIso(13-i));
-  const n14 = days14.reduce((s,d)=>s+(byDay[d]||[]).length,0);
-  const went14 = days14.filter(d=>(byDay[d]||[]).length).length;
-  $("#p-hint").textContent = n14 ? `${n14} in the last 14 days · went on ${went14} of 14` : "tap a button below to log one";
+  const pStart = mondayOf(new Date()); pStart.setDate(pStart.getDate() - poopWeekOff*7);
+  const days7 = [...Array(7)].map((_,i)=>{ const d=new Date(pStart); d.setDate(d.getDate()+i); return isoDate(d); });
+  $("#p-wlabel").textContent = weekRangeLabel(isoDate(pStart));
+  $("#p-wnext").disabled = poopWeekOff===0;
+  const n7 = days7.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+  const went7 = days7.filter(d=>(byDay[d]||[]).length).length;
+  $("#p-hint").textContent = n7 ? `${n7} this week · went on ${went7} of 7` : "tap a button below to log one";
 
   $("#p-buttons").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{
     poops.push({id:uid(), date:todayIso(), type:b.dataset.p, ts:Date.now()});
@@ -1655,7 +1675,7 @@ function renderPoop(){
     renderPoop(); renderReview();
   });
 
-  $("#p-strip").innerHTML = days14.map(day=>{
+  $("#p-strip").innerHTML = days7.map(day=>{
     const list = byDay[day];
     const d = parseIso(day);
     const last = list && list.length ? [...list].sort((a,b)=>b.ts-a.ts)[0] : null;
@@ -1673,6 +1693,8 @@ function renderPoop(){
     el.addEventListener("mouseleave",hideTip);
   });
 }
+$("#p-wprev").onclick = ()=>{ poopWeekOff++; renderPoop(); };
+$("#p-wnext").onclick = ()=>{ if(poopWeekOff>0){ poopWeekOff--; renderPoop(); } };
 
 /* --- entries list --- */
 $("#j-search").addEventListener("input", e=>{ query = e.target.value.trim(); renderList(); });
