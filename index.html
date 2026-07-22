@@ -397,6 +397,18 @@ svg circle[data-cat]{cursor:pointer}
 .mbar{width:16px; border-radius:4px 4px 2px 2px; min-height:2px}
 .mnum{font-size:11px; font-weight:600}
 .ml{font-size:10.5px; color:var(--ink-3)}
+
+/* ---------- review: report at-a-glance charts ---------- */
+.rc-block{margin-top:16px}
+.rc-block:first-child{margin-top:0}
+.rc-block + .rc-block{padding-top:14px; border-top:1px solid var(--hairline)}
+.rc-label{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.rc-empty{font-size:12.5px; color:var(--ink-3); margin-top:6px}
+.rc-cmp{display:flex; gap:22px; align-items:flex-end; padding:12px 2px 4px}
+.rc-cmp .col{display:flex; flex-direction:column; align-items:center; gap:3px}
+.rc-cmp .barwrap{height:48px; display:flex; align-items:flex-end}
+.rc-cmp .bar{width:30px; border-radius:4px 4px 2px 2px; min-height:2px; background:var(--accent)}
+.rc-cmp .bar.prev{opacity:.5}
 .ins{margin:10px 0 4px; padding-left:18px; font-size:13.5px}
 .ins li{margin-top:6px}
 .ins-none{font-size:13px; color:var(--ink-3); margin:12px 0 4px}
@@ -760,6 +772,7 @@ svg circle[data-cat]{cursor:pointer}
           </div>
         </div>
         <button class="today-link" id="rp-current" hidden style="display:block; margin:4px auto 0">Back to current</button>
+        <div id="rp-charts"></div>
         <div class="sumtext" id="rp-text"></div>
         <div class="sumactions">
           <label class="emailrow">Send to <input type="email" class="mailinput" id="rp-mail" placeholder="you@email.com" autocomplete="email"></label>
@@ -2416,6 +2429,78 @@ document.querySelectorAll(".mailinput").forEach(inp=>{
   });
 });
 
+function mdistCols(items){
+  const maxN = Math.max(...items.map(x=>x.n), 1);
+  return `<div class="mdist" style="padding:10px 2px 0">${items.map(x=>
+    `<div class="mcol"${x.n?"":' style="opacity:.3"'}><div class="mbarwrap"><div class="mbar" style="height:${Math.max(x.n/maxN*44,3)}px; background:var(${x.v})"></div></div><span class="mnum">${x.numLabel ?? x.n}</span><span class="ml"${x.wide?' style="max-width:54px; text-align:center; line-height:1.15"':""}>${esc(x.label)}</span></div>`
+  ).join("")}</div>`;
+}
+
+function renderReportCharts(){
+  const {cur:r, prev, prevLabel} = repRanges();
+  const entries = journal.filter(e=>r.match(e.date));
+  const blocks = [];
+
+  const dayMood = {}, dayMoodTs = {};
+  entries.forEach(e=>{ if (e.mood && (!dayMoodTs[e.date] || e.ts>dayMoodTs[e.date])){ dayMood[e.date]=e.mood; dayMoodTs[e.date]=e.ts; } });
+  const moods = Object.values(dayMood);
+  let moodHtml;
+  if (!moods.length){
+    moodHtml = `<div class="rc-empty">Not logged this period.</div>`;
+  } else {
+    moodHtml = mdistCols(MOODS.map(m=>({label:m.label, n:moods.filter(x=>x===m.n).length, v:m.v})));
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Mood</div>${moodHtml}</div>`);
+
+  const list = expenses.filter(e=>r.match(e.date));
+  const prevList = expenses.filter(e=>prev.match(e.date));
+  let spendHtml;
+  if (!list.length && !prevList.length){
+    spendHtml = `<div class="rc-empty">No spending logged.</div>`;
+  } else {
+    const t1 = sum(list), t2 = sum(prevList);
+    const max = Math.max(t1, t2, 1);
+    const prevCap = prevLabel.charAt(0).toUpperCase() + prevLabel.slice(1);
+    spendHtml = `<div class="rc-cmp">
+      <div class="col"><div class="barwrap"><div class="bar" style="height:${Math.max(t1/max*44,3)}px"></div></div><span class="mnum">${fmt(t1)}</span><span class="ml">This period</span></div>
+      <div class="col"><div class="barwrap"><div class="bar prev" style="height:${Math.max(t2/max*44,3)}px"></div></div><span class="mnum">${fmt(t2)}</span><span class="ml">${esc(prevCap)}</span></div>
+    </div>`;
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Spending</div>${spendHtml}</div>`);
+
+  const act = activeHabits();
+  let habitHtml;
+  if (!act.length){
+    habitHtml = `<div class="rc-empty">No habits tracked.</div>`;
+  } else {
+    habitHtml = mdistCols(act.map(h=>{
+      const n = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
+      return {label:h.name, n, v:h.v, wide:true, numLabel:`${n}/${r.days}`};
+    }));
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Habits</div>${habitHtml}</div>`);
+
+  const ps = poops.filter(x=>r.match(x.date));
+  let poopHtml;
+  if (!ps.length){
+    poopHtml = `<div class="rc-empty">None logged this period.</div>`;
+  } else {
+    poopHtml = mdistCols(POOPS.map(t=>({label:t.label, n:ps.filter(x=>x.type===t.id).length, v:t.v})));
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Poop</div>${poopHtml}</div>`);
+
+  const goutEntries = entries.filter(e=>e.goutSeverity);
+  let goutHtml;
+  if (!goutEntries.length){
+    goutHtml = `<div class="rc-empty">None this period.</div>`;
+  } else {
+    goutHtml = mdistCols(GOUT_LEVELS.map(g=>({label:g.label, n:goutEntries.filter(e=>e.goutSeverity===g.id).length, v:g.v})));
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Gout</div>${goutHtml}</div>`);
+
+  $("#rp-charts").innerHTML = blocks.join("");
+}
+
 function renderReport(){
   $("#rp-week").setAttribute("aria-pressed", repPeriod==="week");
   $("#rp-month").setAttribute("aria-pressed", repPeriod==="month");
@@ -2423,6 +2508,7 @@ function renderReport(){
   $("#rp-label").textContent = r.label;
   $("#rp-next").disabled = repOffset===0;
   $("#rp-current").hidden = repOffset===0;
+  renderReportCharts();
   $("#rp-text").textContent = buildCombinedReport();
 }
 $("#rp-week").onclick = ()=>{ repPeriod="week"; repOffset=0; renderReport(); };
