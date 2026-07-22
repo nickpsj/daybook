@@ -153,7 +153,9 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 
 /* ---------- ledger ---------- */
 .ledger{padding:6px 0 8px}
-.dayhead{display:flex; justify-content:space-between; padding:12px 18px 4px; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.dayhead{display:flex; justify-content:space-between; padding:12px 18px 4px; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); font-weight:600; cursor:pointer}
+.dayhead .chev{display:inline-block; font-size:10px; margin-right:5px; transition:transform .15s}
+.dayhead.open .chev{transform:rotate(90deg)}
 .txn{display:flex; align-items:center; gap:12px; padding:9px 18px; border-top:1px solid var(--hairline)}
 .txn:hover{background:var(--surface-2)}
 .txn .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto}
@@ -215,7 +217,11 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .jentry{padding:14px 18px; border-top:1px solid var(--hairline); display:flex; gap:12px; align-items:flex-start}
 .jentry:first-of-type{border-top:0}
 .jentry .body{flex:1; min-width:0}
+.jentry .summary{cursor:pointer}
 .jentry .meta{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.jentry .chev{display:inline-block; font-size:11px; color:var(--ink-3); transition:transform .15s}
+.jentry.open .chev{transform:rotate(90deg)}
+.jentry .preview{font-size:13px; color:var(--ink-2); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .jentry .d{font-weight:600; font-size:13.5px}
 .moodchip{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--ink-2); background:var(--surface-2); padding:2px 9px; border-radius:999px}
 .moodchip .dot{width:7px; height:7px; border-radius:50%}
@@ -996,6 +1002,7 @@ tabButtons.forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
    SPENDING
 ===================================================== */
 let viewMonth = new Date(); viewMonth.setDate(1);
+let sToggled = new Set();   // day-iso strings whose ledger group expand state differs from the default (most recent day open)
 let selCat = load("db_lastcat","food");
 let editingExpense = null;
 let catFilter = null;
@@ -1231,7 +1238,10 @@ function renderLedger(){
 
   const byDay = {};
   list.forEach(e=>(byDay[e.date]=byDay[e.date]||[]).push(e));
-  el.innerHTML = banner + Object.keys(byDay).sort().reverse().map(day=>{
+  const days = Object.keys(byDay).sort().reverse();
+  const forceOpen = !!(eQuery || catFilter);
+  el.innerHTML = banner + days.map((day,i)=>{
+    const open = forceOpen || ((i===0) !== sToggled.has(day));
     const rows = byDay[day].map(e=>{
       const c = catById(e.cat);
       const label = e.note ? highlight(esc(e.note), eQuery) : esc(c.name);
@@ -1242,10 +1252,11 @@ function renderLedger(){
         <button class="edit" data-editx="${e.id}" aria-label="Edit expense">✎</button>
         <button class="del" data-del="${e.id}" aria-label="Delete expense">×</button></div>`;
     }).join("");
-    return `<div class="dayhead"><span>${dayLabel(day)}</span><span class="num">${fmt(sum(byDay[day]))}</span></div>${rows}`;
+    return `<div class="dayhead${open?" open":""}" data-day="${day}"><span><span class="chev" aria-hidden="true">›</span>${dayLabel(day)}${byDay[day].length>1?` · ${byDay[day].length}`:""}</span><span class="num">${fmt(sum(byDay[day]))}</span></div>${open?rows:""}`;
   }).join("");
 
-  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=(ev)=>{
+    ev.stopPropagation();
     const item = expenses.find(e=>e.id===b.dataset.del);
     expenses = expenses.filter(e=>e.id!==b.dataset.del);
     if (editingExpense===b.dataset.del) stopEditExpense();
@@ -1253,7 +1264,13 @@ function renderLedger(){
     if (item) trashItem("expense", item);
     renderSpend();
   });
-  el.querySelectorAll("[data-editx]").forEach(b=>b.onclick=()=>startEditExpense(b.dataset.editx));
+  el.querySelectorAll("[data-editx]").forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); startEditExpense(b.dataset.editx); });
+  el.querySelectorAll(".dayhead").forEach(h=>h.addEventListener("click", ()=>{
+    if (forceOpen) return;
+    const day = h.dataset.day;
+    if (sToggled.has(day)) sToggled.delete(day); else sToggled.add(day);
+    renderLedger();
+  }));
   bindLedgerClear(el);
 }
 function bindLedgerClear(el){
@@ -1282,6 +1299,7 @@ let selJDate = todayIso();
 let weekStart = mondayOf(new Date());
 let editingEntry = null;
 let jFilter = null;   // {type:"mood"|"habit", value}
+let jToggled = new Set();   // entry ids whose expand state differs from the default (most recent open)
 
 function yesterdayIso(){ const d = new Date(); d.setDate(d.getDate()-1); return isoDate(d); }
 function updateJDateLabel(){
@@ -1691,6 +1709,16 @@ function setJFilter(f){
   renderList();
 }
 
+function entryPreview(e){
+  if (e.win) return e.win;
+  const g = (e.gratitude||[]).filter(Boolean)[0];
+  if (g) return g;
+  if (e.text) return e.text.length>90 ? e.text.slice(0,90)+"…" : e.text;
+  if (e.challenge) return e.challenge;
+  if (e.forward) return e.forward;
+  return "No details written.";
+}
+
 function renderList(){
   const el = $("#j-list");
   let list = [...journal].sort((a,b)=> b.date.localeCompare(a.date) || b.ts-a.ts);
@@ -1719,33 +1747,39 @@ function renderList(){
     el.innerHTML = `<div class="empty">${query||jFilter ? "Nothing matches that — clear the filter or try another word." : "Your entries will collect here — write your first one above."}</div>`;
     return;
   }
-  el.innerHTML = list.map(e=>{
+  const forceOpen = !!(query || jFilter);
+  el.innerHTML = list.map((e,i)=>{
     const m = e.mood ? moodByN(e.mood) : null;
     const g = e.goutSeverity ? goutById(e.goutSeverity) : null;
     const habitChips = (e.habits||[]).map(id=>{
       const h = habitById(id);
       return h ? `<span class="habitchip" data-fh="${h.id}" title="Show all ${h.name} days"><span class="dot" style="background:var(${h.v})"></span>${h.name}</span>` : "";
     }).join("");
+    const open = forceOpen || ((i===0) !== jToggled.has(String(e.id)));
     const ci = [];
     const grats = (e.gratitude||[]).filter(Boolean);
     if (grats.length) ci.push(`<div class="ci-row"><span class="ci-k">Grateful for</span>${grats.map(g=>highlight(esc(g),query)).join(" · ")}</div>`);
     if (e.win) ci.push(`<div class="ci-row"><span class="ci-k">Win</span>${highlight(esc(e.win),query)}</div>`);
     if (e.challenge) ci.push(`<div class="ci-row"><span class="ci-k">Hard part</span>${highlight(esc(e.challenge),query)}</div>`);
     if (e.forward) ci.push(`<div class="ci-row"><span class="ci-k">Looking forward to</span>${highlight(esc(e.forward),query)}</div>`);
-    return `<div class="jentry">
+    return `<div class="jentry${open?" open":""}" data-jid="${e.id}">
       <div class="body">
-        <div class="meta"><span class="d">${dayLabel(e.date)}</span>${
-          m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${
-          g?`<span class="moodchip"><span class="dot" style="background:var(${g.v})"></span>Gout: ${g.label}</span>`:""}${habitChips}</div>
-        ${ci.join("")}
+        <div class="summary">
+          <div class="meta"><span class="chev" aria-hidden="true">›</span><span class="d">${dayLabel(e.date)}</span>${
+            m?`<span class="moodchip" data-fm="${m.n}" title="Show all ${m.label} days"><span class="dot" style="background:var(${m.v})"></span>${m.label}</span>`:""}${
+            g?`<span class="moodchip"><span class="dot" style="background:var(${g.v})"></span>Gout: ${g.label}</span>`:""}${habitChips}</div>
+          ${!open?`<div class="preview">${highlight(esc(entryPreview(e)),query)}</div>`:""}
+        </div>
+        ${open?`${ci.join("")}
         ${e.prompt?`<div class="prompt-echo">${highlight(esc(e.prompt),query)}</div>`:""}
-        ${e.text?`<div class="txt">${highlight(esc(e.text),query)}</div>`:""}
+        ${e.text?`<div class="txt">${highlight(esc(e.text),query)}</div>`:""}`:""}
       </div>
       <button class="edit" data-jedit="${e.id}" aria-label="Edit entry">✎</button>
       <button class="del" data-jdel="${e.id}" aria-label="Delete entry">×</button></div>`;
   }).join("");
 
-  el.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{
+  el.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=(ev)=>{
+    ev.stopPropagation();
     const item = journal.find(e=>e.id===b.dataset.jdel);
     journal = journal.filter(e=>e.id!==b.dataset.jdel);
     if (editingEntry===b.dataset.jdel) stopEditEntry();
@@ -1753,9 +1787,15 @@ function renderList(){
     if (item) trashItem("entry", item);
     renderJournal();
   });
-  el.querySelectorAll("[data-jedit]").forEach(b=>b.onclick=()=>startEditEntry(b.dataset.jedit));
-  el.querySelectorAll("[data-fm]").forEach(c=>c.onclick=()=>setJFilter({type:"mood", value:+c.dataset.fm}));
-  el.querySelectorAll("[data-fh]").forEach(c=>c.onclick=()=>setJFilter({type:"habit", value:c.dataset.fh}));
+  el.querySelectorAll("[data-jedit]").forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); startEditEntry(b.dataset.jedit); });
+  el.querySelectorAll("[data-fm]").forEach(c=>c.onclick=(ev)=>{ ev.stopPropagation(); setJFilter({type:"mood", value:+c.dataset.fm}); });
+  el.querySelectorAll("[data-fh]").forEach(c=>c.onclick=(ev)=>{ ev.stopPropagation(); setJFilter({type:"habit", value:c.dataset.fh}); });
+  el.querySelectorAll(".jentry .summary").forEach(s=>s.addEventListener("click", ()=>{
+    if (forceOpen) return;
+    const id = s.closest(".jentry").dataset.jid;
+    if (jToggled.has(id)) jToggled.delete(id); else jToggled.add(id);
+    renderList();
+  }));
 }
 
 function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderWeekNav(); renderTodos(); renderList(); renderReview(); }
