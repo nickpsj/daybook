@@ -156,6 +156,12 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .dayhead{display:flex; justify-content:space-between; padding:12px 18px 4px; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); font-weight:600; cursor:pointer}
 .dayhead .chev{display:inline-block; font-size:10px; margin-right:5px; transition:transform .15s}
 .dayhead.open .chev{transform:rotate(90deg)}
+.tbucket{display:flex; justify-content:space-between; align-items:center; padding:11px 18px; margin:6px 10px 0; font-size:12.5px; color:var(--ink-2); font-weight:600; cursor:pointer; background:var(--surface-2); border-radius:8px}
+.tbucket:first-child{margin-top:0}
+.tbucket .chev{display:inline-block; font-size:10px; margin-right:6px; color:var(--ink-3); transition:transform .15s}
+.tbucket.open .chev{transform:rotate(90deg)}
+.tbucket .cnt{color:var(--ink-3); font-weight:500; font-variant-numeric:tabular-nums}
+.tbucket + .jentry{border-top:0}
 .txn{display:flex; align-items:center; gap:12px; padding:9px 18px; border-top:1px solid var(--hairline)}
 .txn:hover{background:var(--surface-2)}
 .txn .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto}
@@ -962,6 +968,22 @@ const MONTHS_LONG = ["January","February","March","April","May","June","July","A
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const parseIso = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
 const esc = s => s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function timeBucket(dateIso){
+  const now = new Date();
+  const wkStart = mondayOf(now);
+  const wkStartIso = isoDate(wkStart);
+  if (dateIso >= wkStartIso) return {key:"thisweek", label:"This week"};
+  const lastWkStartD = new Date(wkStart); lastWkStartD.setDate(lastWkStartD.getDate()-7);
+  const lastWkStartIso = isoDate(lastWkStartD);
+  const lastWkEndIso = isoDate(new Date(wkStart.getTime()-86400000));
+  if (dateIso >= lastWkStartIso && dateIso <= lastWkEndIso) return {key:"lastweek", label:"Last week"};
+  const curMonthKey = monthKey(now);
+  if (dateIso.startsWith(curMonthKey)) return {key:"earliermonth", label:"Earlier this month"};
+  const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth()-1, 1));
+  if (dateIso.startsWith(lastMonthKey)) return {key:"lastmonth", label:"Last month"};
+  const d = parseIso(dateIso);
+  return {key:`m-${dateIso.slice(0,7)}`, label:`${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`};
+}
 const dayLabel = iso => {
   const d = parseIso(iso), t = todayIso();
   if (iso===t) return "Today";
@@ -1003,6 +1025,7 @@ tabButtons.forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 ===================================================== */
 let viewMonth = new Date(); viewMonth.setDate(1);
 let sToggled = new Set();   // day-iso strings whose ledger group expand state differs from the default (most recent day open)
+let sBucketsOpen = new Set();   // time-bucket keys ("lastweek", "earliermonth", ...) the user has expanded
 let selCat = load("db_lastcat","food");
 let editingExpense = null;
 let catFilter = null;
@@ -1240,7 +1263,9 @@ function renderLedger(){
   list.forEach(e=>(byDay[e.date]=byDay[e.date]||[]).push(e));
   const days = Object.keys(byDay).sort().reverse();
   const forceOpen = !!(eQuery || catFilter);
-  el.innerHTML = banner + days.map((day,i)=>{
+  const bucketable = !forceOpen && monthKey(viewMonth)===monthKey(new Date());
+
+  function dayHtml(day, i){
     const open = forceOpen || ((i===0) !== sToggled.has(day));
     const rows = byDay[day].map(e=>{
       const c = catById(e.cat);
@@ -1253,7 +1278,28 @@ function renderLedger(){
         <button class="del" data-del="${e.id}" aria-label="Delete expense">×</button></div>`;
     }).join("");
     return `<div class="dayhead${open?" open":""}" data-day="${day}"><span><span class="chev" aria-hidden="true">›</span>${dayLabel(day)}${byDay[day].length>1?` · ${byDay[day].length}`:""}</span><span class="num">${fmt(sum(byDay[day]))}</span></div>${open?rows:""}`;
-  }).join("");
+  }
+
+  let bodyHtml;
+  if (!bucketable){
+    bodyHtml = days.map((day,i)=>dayHtml(day,i)).join("");
+  } else {
+    const groups = [];
+    days.forEach((day,i)=>{
+      const b = timeBucket(day);
+      const last = groups[groups.length-1];
+      if (last && last.key===b.key) last.days.push({day,i});
+      else groups.push({key:b.key, label:b.label, days:[{day,i}]});
+    });
+    bodyHtml = groups.map(g=>{
+      if (g.key==="thisweek") return g.days.map(({day,i})=>dayHtml(day,i)).join("");
+      const total = sum(g.days.flatMap(({day})=>byDay[day]));
+      const open = sBucketsOpen.has(g.key);
+      const header = `<div class="tbucket${open?" open":""}" data-bucket="${g.key}"><span><span class="chev" aria-hidden="true">›</span>${g.label}</span><span class="cnt">${fmt(total)}</span></div>`;
+      return header + (open ? g.days.map(({day,i})=>dayHtml(day,i)).join("") : "");
+    }).join("");
+  }
+  el.innerHTML = banner + bodyHtml;
 
   el.querySelectorAll("[data-del]").forEach(b=>b.onclick=(ev)=>{
     ev.stopPropagation();
@@ -1269,6 +1315,11 @@ function renderLedger(){
     if (forceOpen) return;
     const day = h.dataset.day;
     if (sToggled.has(day)) sToggled.delete(day); else sToggled.add(day);
+    renderLedger();
+  }));
+  el.querySelectorAll(".tbucket").forEach(h=>h.addEventListener("click", ()=>{
+    const key = h.dataset.bucket;
+    if (sBucketsOpen.has(key)) sBucketsOpen.delete(key); else sBucketsOpen.add(key);
     renderLedger();
   }));
   bindLedgerClear(el);
@@ -1300,6 +1351,7 @@ let weekStart = mondayOf(new Date());
 let editingEntry = null;
 let jFilter = null;   // {type:"mood"|"habit", value}
 let jToggled = new Set();   // entry ids whose expand state differs from the default (most recent open)
+let jBucketsOpen = new Set();   // time-bucket keys ("lastweek", "earliermonth", ...) the user has expanded
 
 function yesterdayIso(){ const d = new Date(); d.setDate(d.getDate()-1); return isoDate(d); }
 function updateJDateLabel(){
@@ -1748,7 +1800,8 @@ function renderList(){
     return;
   }
   const forceOpen = !!(query || jFilter);
-  el.innerHTML = list.map((e,i)=>{
+
+  function entryHtml(e, i){
     const m = e.mood ? moodByN(e.mood) : null;
     const g = e.goutSeverity ? goutById(e.goutSeverity) : null;
     const habitChips = (e.habits||[]).map(id=>{
@@ -1776,7 +1829,25 @@ function renderList(){
       </div>
       <button class="edit" data-jedit="${e.id}" aria-label="Edit entry">✎</button>
       <button class="del" data-jdel="${e.id}" aria-label="Delete entry">×</button></div>`;
-  }).join("");
+  }
+
+  if (forceOpen){
+    el.innerHTML = list.map((e,i)=>entryHtml(e,i)).join("");
+  } else {
+    const groups = [];
+    list.forEach((e,i)=>{
+      const b = timeBucket(e.date);
+      const last = groups[groups.length-1];
+      if (last && last.key===b.key) last.items.push({e,i});
+      else groups.push({key:b.key, label:b.label, items:[{e,i}]});
+    });
+    el.innerHTML = groups.map(g=>{
+      if (g.key==="thisweek") return g.items.map(({e,i})=>entryHtml(e,i)).join("");
+      const open = jBucketsOpen.has(g.key);
+      const header = `<div class="tbucket${open?" open":""}" data-bucket="${g.key}"><span><span class="chev" aria-hidden="true">›</span>${g.label}</span><span class="cnt">${g.items.length} ${g.items.length===1?"entry":"entries"}</span></div>`;
+      return header + (open ? g.items.map(({e,i})=>entryHtml(e,i)).join("") : "");
+    }).join("");
+  }
 
   el.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=(ev)=>{
     ev.stopPropagation();
@@ -1794,6 +1865,11 @@ function renderList(){
     if (forceOpen) return;
     const id = s.closest(".jentry").dataset.jid;
     if (jToggled.has(id)) jToggled.delete(id); else jToggled.add(id);
+    renderList();
+  }));
+  el.querySelectorAll(".tbucket").forEach(h=>h.addEventListener("click", ()=>{
+    const key = h.dataset.bucket;
+    if (jBucketsOpen.has(key)) jBucketsOpen.delete(key); else jBucketsOpen.add(key);
     renderList();
   }));
 }
