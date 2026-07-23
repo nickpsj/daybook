@@ -376,7 +376,7 @@ svg circle[data-cat]{cursor:pointer}
 .trow .t-main{font-weight:600}
 .trow .t-sub{font-size:12.5px; color:var(--ink-3); margin-top:3px}
 
-/* ---------- review: month in pixels ---------- */
+/* ---------- review: mood calendar (month grid) ---------- */
 .pix-nav{display:inline-flex; align-items:center; gap:6px}
 .pix-nav .navbtn{width:26px; height:26px; font-size:13px}
 .pix-nav .cal-mlabel{font-size:12.5px; min-width:74px; text-align:center}
@@ -718,7 +718,7 @@ svg circle[data-cat]{cursor:pointer}
 
     <section class="card">
       <div class="card-h">
-        <h3>Month in money</h3>
+        <h3>Spending calendar</h3>
         <span class="pix-nav">
           <button class="navbtn" id="heat-prev" aria-label="Previous month" type="button">‹</button>
           <span class="cal-mlabel" id="heat-mlabel"></span>
@@ -730,7 +730,7 @@ svg circle[data-cat]{cursor:pointer}
 
     <section class="card">
       <div class="card-h">
-        <h3>Month in pixels</h3>
+        <h3>Mood calendar</h3>
         <span class="pix-nav">
           <button class="navbtn" id="pix-prev" aria-label="Previous month" type="button">‹</button>
           <span class="cal-mlabel" id="pix-mlabel"></span>
@@ -2016,7 +2016,7 @@ function catMovers(curL, prevL, n){
     .map(([id,v])=>`${catById(id).name} ${v>0?"+":"−"}${fmt(Math.abs(v))}`).join(" · ");
 }
 
-/* --- month in pixels --- */
+/* --- mood calendar (month grid) --- */
 let pixMonth = new Date(); pixMonth.setDate(1);
 function renderPixels(){
   $("#pix-mlabel").textContent = `${MONTHS_SHORT[pixMonth.getMonth()]} ${pixMonth.getFullYear()}`;
@@ -2064,7 +2064,7 @@ function renderPixels(){
 $("#pix-prev").onclick = ()=>{ pixMonth.setMonth(pixMonth.getMonth()-1); renderPixels(); };
 $("#pix-next").onclick = ()=>{ if(!$("#pix-next").disabled){ pixMonth.setMonth(pixMonth.getMonth()+1); renderPixels(); } };
 
-/* --- month in money: spending heatmap --- */
+/* --- spending calendar (heatmap) --- */
 let heatMonth = new Date(); heatMonth.setDate(1);
 function renderHeatmap(){
   $("#heat-mlabel").textContent = `${MONTHS_SHORT[heatMonth.getMonth()]} ${heatMonth.getFullYear()}`;
@@ -2213,7 +2213,7 @@ function buildCombinedReport(){
     const pm = Object.values(prevMood);
     const cmp = pm.length ? (avg(moods)>avg(pm)+0.05 ? ` (up from ${avg(pm).toFixed(1)})` : avg(moods)<avg(pm)-0.05 ? ` (down from ${avg(pm).toFixed(1)})` : ` (steady vs ${prevLabel})`) : "";
     lines.push(`Mood: averaged ${avg(moods).toFixed(1)}/5${cmp} — ${counts.join(", ")}`);
-  } else lines.push("Mood: not logged this period.");
+  } else lines.push("Mood: not logged");
   const grats = [], wins = [], challenges = [], forwards = [];
   entries.forEach(e=>{
     (e.gratitude||[]).forEach(g=>{ if(g) grats.push(g); });
@@ -2229,7 +2229,7 @@ function buildCombinedReport(){
     const days = new Set(entries.filter(e=>(e.habits||[]).includes(h.id)).map(e=>e.date)).size;
     return days ? `${h.name} ${days}×` : null;
   }).filter(Boolean);
-  lines.push(habitCounts.length ? `Habits: ${habitCounts.join(" · ")}` : "Habits: none ticked this period.");
+  lines.push(habitCounts.length ? `Habits: ${habitCounts.join(" · ")}` : "Habits: none ticked");
   const periodTodos = todos.filter(t=>r.match(t.date));
   if (periodTodos.length){
     const done = periodTodos.filter(t=>t.done).length;
@@ -2239,7 +2239,7 @@ function buildCombinedReport(){
   if (ps.length){
     const byType = POOPS.filter(t=>ps.some(x=>x.type===t.id)).map(t=>`${t.label} ${ps.filter(x=>x.type===t.id).length}`);
     const wentDays = new Set(ps.map(x=>x.date)).size;
-    let poopLine = `Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days.`;
+    let poopLine = `Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days`;
     const TOD = [
       {label:"morning",   test:h=>h>=5 && h<12},
       {label:"afternoon", test:h=>h>=12 && h<18},
@@ -2250,22 +2250,22 @@ function buildCombinedReport(){
     if (todCounts.length){
       const topTod = [...todCounts].sort((a,b)=>b.n-a.n)[0];
       const pct = Math.round(topTod.n/ps.length*100);
-      if (ps.length>=5 && pct>=50) poopLine += ` Mostly ${topTod.t.label} (${pct}%).`;
+      if (ps.length>=5 && pct>=50) poopLine += ` · mostly ${topTod.t.label} (${pct}%)`;
     }
     lines.push(poopLine);
-  } else lines.push(`Poops: none logged this period.`);
+  } else lines.push(`Poops: none logged`);
   const goutEntries = entries.filter(e=>e.goutSeverity);
   if (goutEntries.length){
     const bySeverity = GOUT_LEVELS.filter(g=>goutEntries.some(e=>e.goutSeverity===g.id))
       .map(g=>`${g.label} ${goutEntries.filter(e=>e.goutSeverity===g.id).length}`);
-    lines.push(`Gout: ${goutEntries.length} flare${goutEntries.length===1?"":"s"} this period (${bySeverity.join(", ")})`);
-  } else lines.push(`Gout: none this period.`);
+    lines.push(`Gout: ${goutEntries.length} flare${goutEntries.length===1?"":"s"} (${bySeverity.join(", ")})`);
+  } else lines.push(`Gout: none logged`);
 
   /* — Money — */
   lines.push("", "— Money —");
   const list = expenses.filter(e=>r.match(e.date));
   if (!list.length){
-    lines.push("No spending logged in this period.");
+    lines.push("No spending logged");
   } else {
     const total = sum(list);
     lines.push(`Total spent: ${fmt(total)} across ${list.length} entries`);
@@ -2287,9 +2287,9 @@ function buildCombinedReport(){
     if (budgets._all>0 && repPeriod==="month" && r.current){
       const now = new Date(), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
       const pace = total/now.getDate()*dim;
-      lines.push(`Budget: ${fmt(total)} of ${fmt(budgets._all)} — on pace for ${fmt(pace)} (${pace<=budgets._all?"under":"over"}).`);
+      lines.push(`Budget: ${fmt(total)} of ${fmt(budgets._all)} — on pace for ${fmt(pace)} (${pace<=budgets._all?"under":"over"})`);
     } else if (budgets._all>0 && repPeriod==="month"){
-      lines.push(`Budget: ${fmt(total)} of ${fmt(budgets._all)} — ${total<=budgets._all?"stayed under":"went over"}.`);
+      lines.push(`Budget: ${fmt(total)} of ${fmt(budgets._all)} — ${total<=budgets._all?"stayed under":"went over"}`);
     }
   }
   return lines.join("\n");
