@@ -458,6 +458,20 @@ svg circle[data-cat]{cursor:pointer}
 .rv-eyebrow:not(:first-child){margin-top:4px}
 .repnav{display:flex; align-items:center; margin-top:10px}
 
+/* ---------- report headline ---------- */
+#rp-headline{margin-top:10px}
+.rp-glance{padding:12px 2px 4px; font-size:12px; color:var(--ink-3); line-height:2}
+.rp-glance b{font-size:15px; font-weight:600; color:var(--ink)}
+.rp-glance .na{font-size:15px; color:var(--ink-3)}
+.rp-glance .hl{color:var(--accent); font-weight:600}
+.rp-glance .sep{color:var(--ink-3); opacity:.45; margin:0 7px}
+.rp-arrow{font-size:11px; margin-left:1px}
+.rp-arrow.good{color:var(--good)}
+.rp-arrow.bad{color:var(--bad)}
+.rp-details{display:flex; align-items:center; gap:6px; width:100%; text-align:left; padding:11px 2px; margin-top:12px; border-top:1px solid var(--hairline); color:var(--ink-2); font-size:13px; font-weight:500}
+.rp-details .chev{font-size:11px; color:var(--ink-3); display:inline-block; transition:transform .15s}
+.rp-details.open .chev{transform:rotate(90deg)}
+
 /* ---------- summary reports ---------- */
 .sumtoggle{margin-top:0}
 .sumtoggle .chip{padding:5px 12px; font-size:12.5px}
@@ -788,8 +802,10 @@ svg circle[data-cat]{cursor:pointer}
           </div>
         </div>
         <button class="today-link" id="rp-current" hidden style="display:block; margin:4px auto 0">Back to current</button>
+        <div id="rp-headline"></div>
         <div id="rp-charts"></div>
-        <div class="sumtext" id="rp-text"></div>
+        <button class="rp-details" id="rp-details" type="button" aria-expanded="false"><span class="chev" aria-hidden="true">›</span> Summary in words</button>
+        <div class="sumtext" id="rp-text" hidden></div>
         <div class="sumactions">
           <label class="emailrow">Send to <input type="email" class="mailinput" id="rp-mail" placeholder="you@email.com" autocomplete="email"></label>
           <button class="btn ghost" id="rp-copy">Copy</button>
@@ -959,6 +975,7 @@ const $ = s => document.querySelector(s);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const cur = new Intl.NumberFormat("en-SG",{style:"currency",currency:"SGD"});
 const fmt = n => cur.format(n);
+const fmt0 = n => fmt(Math.round(n)).replace(/\.\d+$/, "");   // whole-dollar, for compact headline
 const pad = n => String(n).padStart(2,"0");
 const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const todayIso = () => isoDate(new Date());
@@ -2620,6 +2637,51 @@ function renderReportCharts(){
   $("#rp-charts").innerHTML = blocks.join("");
 }
 
+function rpArrow(cur, prev, higherIsBetter){
+  if (prev==null) return "";
+  if (cur===prev) return "";
+  const up = cur > prev;
+  const good = higherIsBetter ? up : !up;
+  return ` <span class="rp-arrow ${good?"good":"bad"}">${up?"▲":"▼"}</span>`;
+}
+function renderReportHeadline(){
+  const {cur:r, prev} = repRanges();
+  const entries = journal.filter(e=>r.match(e.date));
+
+  const dayMood={}, dayMoodTs={};
+  entries.forEach(e=>{ if(e.mood && (!dayMoodTs[e.date]||e.ts>dayMoodTs[e.date])){ dayMood[e.date]=e.mood; dayMoodTs[e.date]=e.ts; } });
+  const moods=Object.values(dayMood);
+  const moodAvg = moods.length ? avg(moods) : null;
+  const prevMood={}, prevMoodTs={};
+  journal.filter(e=>prev.match(e.date)).forEach(e=>{ if(e.mood && (!prevMoodTs[e.date]||e.ts>prevMoodTs[e.date])){ prevMood[e.date]=e.mood; prevMoodTs[e.date]=e.ts; } });
+  const prevMoods=Object.values(prevMood);
+  const prevMoodAvg = prevMoods.length ? avg(prevMoods) : null;
+
+  const list = expenses.filter(e=>r.match(e.date));
+  const prevList = expenses.filter(e=>prev.match(e.date));
+  const total = sum(list);
+
+  const ps = poops.filter(x=>r.match(x.date));
+  const wentDays = new Set(ps.map(x=>x.date)).size;
+  const goutCount = entries.filter(e=>e.goutSeverity).length;
+
+  const sigs=[];
+  sigs.push(moodAvg!=null ? `Mood <b>${moodAvg.toFixed(1)}</b>${rpArrow(moodAvg, prevMoodAvg, true)}` : `Mood <span class="na">—</span>`);
+  sigs.push(`Spent <b>${fmt0(total)}</b>${prevList.length ? rpArrow(total, sum(prevList), false) : ""}`);
+  sigs.push(`<span class="hl">Poop</span> <b>${wentDays}/${r.days}</b>`);
+  sigs.push(`<span class="hl">Gout</span> <b>${goutCount}</b>`);
+
+  $("#rp-headline").innerHTML = `<div class="rp-glance">${sigs.join(`<span class="sep">·</span>`)}</div>`;
+}
+
+let repTextOpen = false;
+function applyRepDetails(){
+  $("#rp-text").hidden = !repTextOpen;
+  $("#rp-details").setAttribute("aria-expanded", repTextOpen);
+  $("#rp-details").classList.toggle("open", repTextOpen);
+}
+$("#rp-details").onclick = ()=>{ repTextOpen = !repTextOpen; applyRepDetails(); };
+
 function renderReport(){
   $("#rp-week").setAttribute("aria-pressed", repPeriod==="week");
   $("#rp-month").setAttribute("aria-pressed", repPeriod==="month");
@@ -2627,8 +2689,10 @@ function renderReport(){
   $("#rp-label").textContent = r.label;
   $("#rp-next").disabled = repOffset===0;
   $("#rp-current").hidden = repOffset===0;
+  renderReportHeadline();
   renderReportCharts();
   $("#rp-text").textContent = buildCombinedReport();
+  applyRepDetails();
 }
 $("#rp-week").onclick = ()=>{ repPeriod="week"; repOffset=0; renderReport(); };
 $("#rp-month").onclick = ()=>{ repPeriod="month"; repOffset=0; renderReport(); };
