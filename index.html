@@ -711,80 +711,39 @@ svg circle[data-cat]{cursor:pointer}
 
   <!-- ============ REVIEW ============ -->
   <main id="view-review" class="stack" hidden>
-    <div class="rv-eyebrow">Money</div>
     <section class="card">
-        <div class="card-h"><h3>Budgets</h3><button class="shuffle" id="b-edit">Edit budgets</button></div>
-        <div class="chartbody" id="b-body"></div>
-      </section>
+      <div class="card-h"><h3>Budgets</h3><button class="shuffle" id="b-edit">Edit budgets</button></div>
+      <div class="chartbody" id="b-body"></div>
+    </section>
 
-      <section class="card">
-        <div class="card-h"><h3>Am I doing better?</h3><span class="hint">vs the period before</span></div>
-        <div class="chartbody" id="r-trends"></div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <h3>Month in money</h3>
-          <span class="pix-nav">
-            <button class="navbtn" id="heat-prev" aria-label="Previous month" type="button">‹</button>
-            <span class="cal-mlabel" id="heat-mlabel"></span>
-            <button class="navbtn" id="heat-next" aria-label="Next month" type="button">›</button>
-          </span>
-        </div>
-        <div class="chartbody" id="r-heatmap"></div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <h3>Monthly recap</h3>
-          <span class="pix-nav">
-            <button class="navbtn" id="rc-prev" aria-label="Previous month" type="button">‹</button>
-            <span class="cal-mlabel" id="rc-mlabel"></span>
-            <button class="navbtn" id="rc-next" aria-label="Next month" type="button">›</button>
-          </span>
-        </div>
-        <div class="chartbody" id="r-month"></div>
-      </section>
-
-    <div class="rv-eyebrow">Life</div>
-      <section class="card">
-        <div class="card-h"><h3>Highlights</h3><span class="hint">grateful for &amp; wins, last 7 days</span></div>
-        <div class="chartbody" id="r-highlights"></div>
-      </section>
-
-      <div class="charts">
-        <section class="card">
-          <div class="card-h">
-            <h3>Month in pixels</h3>
-            <span class="pix-nav">
-              <button class="navbtn" id="pix-prev" aria-label="Previous month" type="button">‹</button>
-              <span class="cal-mlabel" id="pix-mlabel"></span>
-              <button class="navbtn" id="pix-next" aria-label="Next month" type="button">›</button>
-            </span>
-          </div>
-          <div class="chartbody" id="r-pixels"></div>
-        </section>
-        <section class="card">
-          <div class="card-h"><h3>Poop health</h3><span class="hint">last 14 days</span></div>
-          <div class="chartbody" id="r-poophealth"></div>
-        </section>
+    <section class="card">
+      <div class="card-h">
+        <h3>Month in money</h3>
+        <span class="pix-nav">
+          <button class="navbtn" id="heat-prev" aria-label="Previous month" type="button">‹</button>
+          <span class="cal-mlabel" id="heat-mlabel"></span>
+          <button class="navbtn" id="heat-next" aria-label="Next month" type="button">›</button>
+        </span>
       </div>
+      <div class="chartbody" id="r-heatmap"></div>
+    </section>
 
-      <div class="charts">
-        <section class="card">
-          <div class="card-h"><h3>Habits</h3><span class="hint">last 7 days &amp; streaks</span></div>
-          <div class="chartbody" id="r-habits"></div>
-        </section>
-        <section class="card">
-          <div class="card-h"><h3>Mood insights</h3><span class="hint" id="r-insights-hint"></span></div>
-          <div class="chartbody" id="r-insights"></div>
-        </section>
+    <section class="card">
+      <div class="card-h">
+        <h3>Month in pixels</h3>
+        <span class="pix-nav">
+          <button class="navbtn" id="pix-prev" aria-label="Previous month" type="button">‹</button>
+          <span class="cal-mlabel" id="pix-mlabel"></span>
+          <button class="navbtn" id="pix-next" aria-label="Next month" type="button">›</button>
+        </span>
       </div>
+      <div class="chartbody" id="r-pixels"></div>
+    </section>
 
-      <section class="card">
-        <div class="card-h"><h3>Records</h3><span class="hint">all time</span></div>
-        <div class="chartbody" id="r-records"></div>
-      </section>
+    <section class="card">
+      <div class="card-h"><h3>Records</h3><span class="hint">all time</span></div>
+      <div class="chartbody" id="r-records"></div>
+    </section>
 
     <section class="card">
       <div class="card-h"><h3>Daybook report</h3>
@@ -1036,7 +995,6 @@ function setTab(which){
 }
 tabButtons.forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 
-/* --- Money | Life switch inside Review --- */
 /* =====================================================
    SPENDING
 ===================================================== */
@@ -1959,78 +1917,6 @@ function renderBudgets(){
   el.innerHTML = rows.join("") + proj;
 }
 
-function renderHabitStats(){
-  const el = $("#r-habits");
-  const dayH = dayHabitSets();
-  if (!Object.keys(dayH).length || !activeHabits().length){
-    el.innerHTML = `<div class="empty">Tick habits with your journal entries and streaks will show up here.</div>`;
-    return;
-  }
-  const last7 = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-6+i); return isoDate(d); });
-  el.innerHTML = activeHabits().map(h=>{
-    const dots = last7.map(d=>`<i class="${dayH[d]?.has(h.id)?"on":""}" style="--c:var(${h.v})"></i>`).join("");
-    const n7 = last7.filter(d=>dayH[d]?.has(h.id)).length;
-    let cur=0, best=0, run=0, prev=null;
-    for (const d of Object.keys(dayH).filter(x=>dayH[x].has(h.id)).sort()){
-      if (prev){ const p=parseIso(prev); p.setDate(p.getDate()+1); run = isoDate(p)===d ? run+1 : 1; }
-      else run = 1;
-      best = Math.max(best,run); prev = d;
-    }
-    const dd = new Date();
-    if (!dayH[isoDate(dd)]?.has(h.id)) dd.setDate(dd.getDate()-1);
-    while (dayH[isoDate(dd)]?.has(h.id)){ cur++; dd.setDate(dd.getDate()-1); }
-    return `<div class="hrow"><span class="dot" style="background:var(${h.v})"></span><span class="nm">${h.name}</span>
-      <span class="h7">${dots}</span><span class="hnum num">${n7}/7</span>
-      <span class="hstreak">streak ${cur} · best ${best}</span></div>`;
-  }).join("");
-}
-
-function renderInsights(){
-  const el = $("#r-insights");
-  const dayMood = {}, dayMoodTs = {};
-  journal.forEach(e=>{ if (e.mood && (!dayMoodTs[e.date] || e.ts>dayMoodTs[e.date])){ dayMood[e.date]=e.mood; dayMoodTs[e.date]=e.ts; } });
-  const moodDays = Object.keys(dayMood);
-  if (moodDays.length<3){
-    $("#r-insights-hint").textContent = "";
-    el.innerHTML = `<div class="empty">Log moods for a few more days and patterns will start showing here.</div>`;
-    return;
-  }
-  $("#r-insights-hint").textContent = `${moodDays.length} days of mood data`;
-
-  const maxN = Math.max(...MOODS.map(m=>moodDays.filter(d=>dayMood[d]===m.n).length), 1);
-  const dist = `<div class="mdist">` + MOODS.map(m=>{
-    const n = moodDays.filter(d=>dayMood[d]===m.n).length;
-    return `<div class="mcol"><div class="mbarwrap"><div class="mbar" style="height:${Math.max(n/maxN*46,2)}px;background:var(${m.v})"></div></div><span class="mnum num">${n}</span><span class="ml">${m.label}</span></div>`;
-  }).join("") + `</div>`;
-
-  const sentences = [];
-  const dayH = dayHabitSets();
-  const effects = [];
-  for (const h of activeHabits()){
-    const w=[], wo=[];
-    for (const d of moodDays) (dayH[d]?.has(h.id)?w:wo).push(dayMood[d]);
-    if (w.length>=3 && wo.length>=3) effects.push({h, diff:avg(w)-avg(wo)});
-  }
-  effects.sort((a,b)=>b.diff-a.diff);
-  for (const x of effects.slice(0,2)){
-    if (x.diff>=0.3) sentences.push(`Your mood averages <strong>+${x.diff.toFixed(1)}</strong> higher on days you ${x.h.name.toLowerCase()}.`);
-  }
-  const daySpend = {};
-  expenses.forEach(e=>daySpend[e.date]=(daySpend[e.date]||0)+e.amt);
-  const lowD = moodDays.filter(d=>dayMood[d]<=2), hiD = moodDays.filter(d=>dayMood[d]>=4);
-  if (lowD.length>=3 && hiD.length>=3){
-    const diff = avg(lowD.map(d=>daySpend[d]||0)) - avg(hiD.map(d=>daySpend[d]||0));
-    if (Math.abs(diff)>=5){
-      sentences.push(diff>0
-        ? `Rough-and-Low days cost you about <strong class="num">${fmt(diff)}</strong> more than Good-and-Great days.`
-        : `You spend about <strong class="num">${fmt(-diff)}</strong> less on your rougher days.`);
-    }
-  }
-  el.innerHTML = dist + (sentences.length
-    ? `<ul class="ins">${sentences.map(s=>`<li>${s}</li>`).join("")}</ul>`
-    : `<p class="ins-none">No strong patterns yet — they'll sharpen as you log more days.</p>`);
-}
-
 /* --- records: personal bests, computed over all-time data --- */
 function longestRun(dateSet){
   let best=0, run=0, prev=null;
@@ -2120,30 +2006,7 @@ function renderRecords(){
   el.innerHTML = `<div class="facts">${facts.join("")}</div>`;
 }
 
-function renderHighlights(){
-  const el = $("#r-highlights");
-  if (!el) return;
-  const days = [];
-  for (let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(isoDate(d)); }
-  const entries = journal.filter(e=>days.includes(e.date)).sort((a,b)=>b.ts-a.ts);
-  const grats = [], wins = [];
-  entries.forEach(e=>{
-    (e.gratitude||[]).forEach(g=>{ if(g) grats.push({text:g, date:e.date}); });
-    if (e.win) wins.push({text:e.win, date:e.date});
-  });
-  const weekTodos = todos.filter(t=>days.includes(t.date));
-  const todoLine = weekTodos.length ? `<div class="ph-line" style="margin-top:0; margin-bottom:12px">To-dos: <span class="num">${weekTodos.filter(t=>t.done).length} of ${weekTodos.length}</span> done this week</div>` : "";
-  if (!grats.length && !wins.length){
-    el.innerHTML = todoLine || `<div class="empty">Log a gratitude or a win with your next entry and it'll show up here.</div>`;
-    return;
-  }
-  const group = (arr,label)=> arr.length ? `<div class="hl-group"><div class="hl-label">${label}</div>${
-    arr.slice(0,6).map(x=>`<div class="hl-item"><span>${esc(x.text)}</span><span class="hl-date">${dayLabel(x.date)}</span></div>`).join("")
-  }</div>` : "";
-  el.innerHTML = todoLine + group(grats,"Grateful for") + group(wins,"Wins");
-}
-
-/* --- money trends: am I doing better? --- */
+/* --- category movers helper (shared with the report) --- */
 function catMovers(curL, prevL, n){
   const d = {};
   curL.forEach(e=>d[e.cat]=(d[e.cat]||0)+e.amt);
@@ -2151,40 +2014,6 @@ function catMovers(curL, prevL, n){
   return Object.entries(d).filter(([,v])=>Math.abs(v)>=1)
     .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,n||2)
     .map(([id,v])=>`${catById(id).name} ${v>0?"+":"−"}${fmt(Math.abs(v))}`).join(" · ");
-}
-function daysAgoIso(n){ const d=new Date(); d.setDate(d.getDate()-n); return isoDate(d); }
-
-function renderMoneyTrends(){
-  const el = $("#r-trends");
-  const wCur  = expenses.filter(e=>e.date>=daysAgoIso(6)  && e.date<=todayIso());
-  const wPrev = expenses.filter(e=>e.date>=daysAgoIso(13) && e.date<=daysAgoIso(7));
-  const now = new Date();
-  const mCur = monthExpenses(monthKey(now));
-  const prevM = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const dimPrev = new Date(prevM.getFullYear(), prevM.getMonth()+1, 0).getDate();
-  const capIso = `${prevM.getFullYear()}-${pad(prevM.getMonth()+1)}-${pad(Math.min(now.getDate(), dimPrev))}`;
-  const mPrev = monthExpenses(monthKey(prevM)).filter(e=>e.date<=capIso);
-
-  if (!wCur.length && !wPrev.length && !mCur.length && !mPrev.length){
-    el.innerHTML = `<div class="empty">Log spending across two weeks and the comparison appears here.</div>`;
-    return;
-  }
-  const row = (name, curL, prevL, prevLabel)=>{
-    const c = sum(curL), p = sum(prevL);
-    if (!prevL.length){
-      return `<div class="trow"><div class="t-top"><span class="t-name">${name}</span><span class="t-main num">${fmt(c)}</span></div>
-        <div class="t-sub">nothing to compare against yet</div></div>`;
-    }
-    const diff = c - p;
-    const chip = Math.abs(diff)<0.005 ? `<span class="hint">even</span>`
-      : `<span class="${diff>0?"delta-up":"delta-down"}">${diff>0?"▲":"▼"} ${fmt(Math.abs(diff))}</span>`;
-    const movers = catMovers(curL, prevL);
-    return `<div class="trow"><div class="t-top"><span class="t-name">${name}</span><span class="t-main num">${fmt(c)} ${chip}</span></div>
-      <div class="t-sub">${prevLabel}: ${fmt(p)}${movers?` — mostly ${movers}`:""}</div></div>`;
-  };
-  el.innerHTML =
-    row("Last 7 days", wCur, wPrev, "the 7 days before") +
-    row(`${MONTHS_SHORT[now.getMonth()]} so far`, mCur, mPrev, `same point in ${MONTHS_SHORT[prevM.getMonth()]}`);
 }
 
 /* --- month in pixels --- */
@@ -2300,97 +2129,6 @@ function renderHeatmap(){
 $("#heat-prev").onclick = ()=>{ heatMonth.setMonth(heatMonth.getMonth()-1); renderHeatmap(); };
 $("#heat-next").onclick = ()=>{ if(!$("#heat-next").disabled){ heatMonth.setMonth(heatMonth.getMonth()+1); renderHeatmap(); } };
 
-/* --- poop health --- */
-function renderPoopHealth(){
-  const el = $("#r-poophealth");
-  const days = [...Array(14)].map((_,i)=>daysAgoIso(13-i));
-  const inWin = poops.filter(p=>days.includes(p.date));
-  if (!inWin.length){
-    el.innerHTML = `<div class="empty">Log a few poops and your regularity picture shows up here.</div>`;
-    return;
-  }
-  const wentDays = new Set(inWin.map(p=>p.date));
-  let gap = 0, maxGap = 0;
-  days.forEach(d=>{ if (wentDays.has(d)) gap = 0; else { gap++; maxGap = Math.max(maxGap, gap); } });
-  const counts = POOPS.map(t=>({t, n:inWin.filter(p=>p.type===t.id).length})).filter(x=>x.n);
-  const total = inWin.length;
-  const bar = counts.map(x=>`<i style="width:${(x.n/total*100).toFixed(1)}%; background:var(${x.t.v})"></i>`).join("");
-  const legend = counts.map(x=>`<span class="li"><span class="dot" style="background:var(${x.t.v})"></span>${x.t.label} ${x.n}</span>`).join("");
-  const irr = list => poops.filter(p=>list.includes(p.date) && (p.type==="hard"||p.type==="loose")).length;
-  const a = irr(days.slice(7)), b = irr(days.slice(0,7));
-  let note;
-  if (a>=b+2) note = "Hard/Loose days are trending up vs the week before — worth keeping an eye on.";
-  else if (a===0 && b===0) note = "No Hard or Loose days in two weeks — looking good.";
-  else note = `Hard/Loose days: ${a} this week vs ${b} the week before.`;
-
-  const TOD_BUCKETS = [
-    {label:"Morning",   test:h=>h>=5 && h<12,  op:.32},
-    {label:"Afternoon", test:h=>h>=12 && h<18, op:.56},
-    {label:"Evening",   test:h=>h>=18 && h<23, op:.8},
-    {label:"Night",     test:h=>h<5 || h>=23,  op:1},
-  ];
-  const todCounts = TOD_BUCKETS.map(b=>({b, n:inWin.filter(p=>b.test(new Date(p.ts).getHours())).length})).filter(x=>x.n);
-  let todBlock = "";
-  if (todCounts.length){
-    const todBar = todCounts.map(x=>`<i style="width:${(x.n/total*100).toFixed(1)}%; background:var(--accent); opacity:${x.b.op}"></i>`).join("");
-    const todLegend = todCounts.map(x=>`<span class="li"><span class="dot" style="background:var(--accent); opacity:${x.b.op}"></span>${x.b.label} ${x.n}</span>`).join("");
-    const top = [...todCounts].sort((a,b)=>b.n-a.n)[0];
-    const topPct = Math.round(top.n/total*100);
-    const todNote = total>=5 && topPct>=50 ? `Mostly ${top.b.label.toLowerCase()} (${topPct}%).` : "";
-    todBlock = `<div class="ph-line">By time of day</div>
-     <div class="ph-bar">${todBar}</div>
-     <div class="ph-legend">${todLegend}</div>
-     ${todNote?`<div class="ph-note">${todNote}</div>`:""}`;
-  }
-
-  el.innerHTML =
-    `<div class="ph-line">Went on <span class="num">${wentDays.size} of 14</span> days · longest gap <span class="num">${maxGap}</span> day${maxGap===1?"":"s"}</div>
-     <div class="ph-bar">${bar}</div>
-     <div class="ph-legend">${legend}</div>
-     <div class="ph-note">${note}</div>
-     ${todBlock}`;
-}
-
-/* --- monthly recap card (with month navigation) --- */
-let recapMonth = new Date(); recapMonth.setDate(1);
-function renderMonthReview(){
-  const now = new Date();
-  const key = monthKey(recapMonth);
-  const isCurrent = key === monthKey(now);
-  $("#rc-mlabel").textContent = `${MONTHS_SHORT[recapMonth.getMonth()]} ${recapMonth.getFullYear()}`;
-  $("#rc-next").disabled = isCurrent;
-  const el = $("#r-month");
-  const list = monthExpenses(key);
-  if (!list.length){
-    el.innerHTML = `<div class="empty">Nothing spent in ${MONTHS_LONG[recapMonth.getMonth()]} ${recapMonth.getFullYear()}.</div>`;
-    return;
-  }
-  const sofar = isCurrent ? " so far" : "";
-  const facts = [];
-  facts.push(`<div class="fact"><span class="k">Total spent</span><div class="v num">${fmt(sum(list))}</div><span class="s">${list.length} entries${sofar}</span></div>`);
-  const biggest = [...list].sort((a,b)=>b.amt-a.amt)[0];
-  const byDay = {};
-  list.forEach(e=>byDay[e.date]=(byDay[e.date]||0)+e.amt);
-  const busiest = Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
-  const byCat = {};
-  list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amt);
-  const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-  facts.push(`<button class="fact tap" data-factgo="expense" data-factq="${esc(biggest.note||catById(biggest.cat).name)}"><span class="k">Biggest expense</span><div class="v num">${fmt(biggest.amt)}</div><span class="s">${esc(biggest.note||catById(biggest.cat).name)} — ${dayLabel(biggest.date)}</span></button>`);
-  facts.push(`<div class="fact"><span class="k">Busiest day</span><div class="v num">${fmt(busiest[1])}</div><span class="s">${dayLabel(busiest[0])}</span></div>`);
-  facts.push(`<button class="fact tap" data-factgo="cat" data-factcat="${top[0]}"><span class="k">Top category</span><div class="v"><span class="dot" style="background:var(${catById(top[0]).v})"></span>${esc(catById(top[0]).name)}</div><span class="s">${fmt(top[1])}${sofar}</span></button>`);
-  el.innerHTML = `<div class="facts">${facts.join("")}</div>`;
-  el.querySelectorAll("[data-factgo]").forEach(b=>b.onclick=()=>{
-    setTab("spend");
-    viewMonth = new Date(recapMonth.getFullYear(), recapMonth.getMonth(), 1);
-    if (b.dataset.factgo==="expense"){ catFilter=null; eQuery=b.dataset.factq; $("#e-search").value=eQuery; }
-    else { eQuery=""; $("#e-search").value=""; catFilter=b.dataset.factcat; }
-    renderSpend();
-    setTimeout(()=>$("#ledger")?.scrollIntoView({behavior:"smooth", block:"start"}), 50);
-  });
-}
-$("#rc-prev").onclick = ()=>{ recapMonth.setMonth(recapMonth.getMonth()-1); renderMonthReview(); };
-$("#rc-next").onclick = ()=>{ if(!$("#rc-next").disabled){ recapMonth.setMonth(recapMonth.getMonth()+1); renderMonthReview(); } };
-
 /* --- combined report with period navigation --- */
 let repPeriod = "week";   // "week" (calendar Mon–Sun) | "month" (calendar month)
 let repOffset = 0;        // 0 = current period, 1 = one back, ...
@@ -2501,7 +2239,20 @@ function buildCombinedReport(){
   if (ps.length){
     const byType = POOPS.filter(t=>ps.some(x=>x.type===t.id)).map(t=>`${t.label} ${ps.filter(x=>x.type===t.id).length}`);
     const wentDays = new Set(ps.map(x=>x.date)).size;
-    lines.push(`Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days.`);
+    let poopLine = `Poops: ${ps.length} total (${byType.join(", ")}) — went on ${wentDays} of ${r.days} days.`;
+    const TOD = [
+      {label:"morning",   test:h=>h>=5 && h<12},
+      {label:"afternoon", test:h=>h>=12 && h<18},
+      {label:"evening",   test:h=>h>=18 && h<23},
+      {label:"night",     test:h=>h<5 || h>=23},
+    ];
+    const todCounts = TOD.map(t=>({t, n:ps.filter(p=>t.test(new Date(p.ts).getHours())).length})).filter(x=>x.n);
+    if (todCounts.length){
+      const topTod = [...todCounts].sort((a,b)=>b.n-a.n)[0];
+      const pct = Math.round(topTod.n/ps.length*100);
+      if (ps.length>=5 && pct>=50) poopLine += ` Mostly ${topTod.t.label} (${pct}%).`;
+    }
+    lines.push(poopLine);
   } else lines.push(`Poops: none logged this period.`);
   const goutEntries = entries.filter(e=>e.goutSeverity);
   if (goutEntries.length){
@@ -2703,8 +2454,7 @@ $("#rp-copy").onclick = ()=>copyText($("#rp-text").textContent, $("#rp-copy"));
 $("#rp-email").onclick = ()=>emailText(`Daybook report — ${periodRange(repPeriod, repOffset).shortLabel}`, $("#rp-text").textContent);
 
 function renderReview(){
-  renderBudgets(); renderMoneyTrends(); renderHabitStats(); renderInsights(); renderMonthReview();
-  renderReport(); renderHighlights(); renderPixels(); renderPoopHealth(); renderHeatmap(); renderRecords();
+  renderBudgets(); renderHeatmap(); renderPixels(); renderRecords(); renderReport();
 }
 $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 
