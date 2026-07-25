@@ -1,6 +1,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Daybook">
+<meta name="theme-color" content="#f6f8f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101312" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
 <title>Daybook — spending & journal</title>
 <style>
 /* ---------- tokens ---------- */
@@ -475,6 +479,12 @@ svg circle[data-cat]{cursor:pointer}
 /* ---------- summary reports ---------- */
 .sumtoggle{margin-top:0}
 .sumtoggle .chip{padding:5px 12px; font-size:12.5px}
+.rpmodes{margin-top:4px}
+.rpmodes .chip{flex:1; justify-content:center; padding:7px 10px; font-size:13px; font-weight:600}
+.rprange{display:flex; gap:10px; margin-top:12px}
+.rprange label{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.rprange input{background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:7px 9px; font-size:13.5px; color:var(--ink); width:100%; min-width:0; text-transform:none; letter-spacing:normal; font-weight:400}
+.rprange input:focus{outline:2px solid var(--accent); outline-offset:-1px}
 .sumtext{white-space:pre-wrap; overflow-wrap:break-word; font-size:13.5px; line-height:1.75; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:13px 15px; margin-top:12px}
 .sumactions{display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap}
 
@@ -482,6 +492,8 @@ svg circle[data-cat]{cursor:pointer}
 .datarow{display:flex; justify-content:center; align-items:center; gap:12px; margin-top:26px; color:var(--ink-3); font-size:13px}
 .datarow button{color:var(--ink-2); font-size:13px; padding:4px 6px; border-radius:6px}
 .datarow button:hover{color:var(--accent)}
+.backupline{text-align:center; margin-top:8px; font-size:12px; color:var(--ink-3)}
+.backupline.warn{color:var(--bad)}
 .dlg-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:60}
 .dlg{position:fixed; z-index:61; left:50%; top:50%; transform:translate(-50%,-50%); width:min(560px, calc(100vw - 32px)); max-height:min(640px, calc(100vh - 48px)); display:flex; flex-direction:column; padding:18px; gap:10px}
 .dlg h3{font-size:16px; font-weight:600}
@@ -630,6 +642,7 @@ svg circle[data-cat]{cursor:pointer}
         <button class="btn ghost" id="todo-add-btn">Add</button>
       </div>
       <div class="todo-list" id="todo-list"></div>
+      <button class="today-link" id="todo-carry" hidden style="display:block; margin:2px auto 8px"></button>
 
       <div class="jlabel">How are you feeling?</div>
       <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
@@ -746,14 +759,14 @@ svg circle[data-cat]{cursor:pointer}
     </section>
 
     <section class="card">
-      <div class="card-h"><h3>Daybook report</h3>
-        <span class="sumtoggle chips">
-          <button class="chip" id="rp-week" aria-pressed="true">Weekly</button>
-          <button class="chip" id="rp-month" aria-pressed="false">Monthly</button>
-        </span>
-      </div>
+      <div class="card-h"><h3>Daybook report</h3></div>
       <div class="chartbody">
-        <div class="repnav">
+        <div class="chips rpmodes">
+          <button class="chip" id="rp-week" aria-pressed="true">Week</button>
+          <button class="chip" id="rp-month" aria-pressed="false">Month</button>
+          <button class="chip" id="rp-range" aria-pressed="false">Range</button>
+        </div>
+        <div class="repnav" id="rp-nav">
           <div class="monthnav" style="justify-content:center; flex:1">
             <button class="navbtn" id="rp-prev" aria-label="Previous period" type="button">‹</button>
             <span class="mlabel" id="rp-label" style="font-size:14.5px"></span>
@@ -761,6 +774,10 @@ svg circle[data-cat]{cursor:pointer}
           </div>
         </div>
         <button class="today-link" id="rp-current" hidden style="display:block; margin:4px auto 0">Back to current</button>
+        <div class="rprange" id="rp-rangerow" hidden>
+          <label>From <input type="date" id="rp-from"></label>
+          <label>To <input type="date" id="rp-to"></label>
+        </div>
         <div id="rp-headline"></div>
         <div id="rp-charts"></div>
         <button class="rp-details" id="rp-details" type="button" aria-expanded="false"><span class="chev" aria-hidden="true">›</span> Summary in words</button>
@@ -774,12 +791,15 @@ svg circle[data-cat]{cursor:pointer}
     </section>
   </main>
 
-  <footer class="datarow">
-    <button id="d-export">Export data</button>
-    <span aria-hidden="true">·</span>
-    <button id="d-import">Import data</button>
-    <span aria-hidden="true">·</span>
-    <button id="d-bin">Recently deleted</button>
+  <footer>
+    <div class="datarow">
+      <button id="d-export">Export data</button>
+      <span aria-hidden="true">·</span>
+      <button id="d-import">Import data</button>
+      <span aria-hidden="true">·</span>
+      <button id="d-bin">Recently deleted</button>
+    </div>
+    <div class="backupline" id="backup-line"></div>
   </footer>
 </div>
 
@@ -909,6 +929,7 @@ let poops    = load("db_poops",[]);      // {id, date, type, ts}
 let todos    = load("db_todos",[]);      // {id, date, text, done, ts}
 let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop"|"todo", item, delAt}
 let userEmail = load("db_email","");
+let lastExport = load("db_lastexport","");   // ISO date of the last successful export
 
 let habits = load("db_habits", null);    // {id, name, v, removed?}
 if (!habits){
@@ -1312,7 +1333,7 @@ function renderSpend(){
   const isCurrent = monthKey(viewMonth)===monthKey(now);
   $("#m-next").disabled = isCurrent;
   $("#m-today").hidden = isCurrent;
-  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview();
+  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview(); renderBackupLine();
 }
 
 /* =====================================================
@@ -1409,6 +1430,13 @@ function renderTodos(){
   $("#todo-label").textContent = selJDate===todayIso() ? "To-do" : `To-do — ${dayLabel(selJDate)}`;
   const list = todos.filter(t=>t.date===selJDate).sort((a,b)=>a.ts-b.ts);
   const el = $("#todo-list");
+
+  // offer to pull forward anything still unfinished from earlier days (only while viewing today)
+  const carry = selJDate===todayIso() ? todos.filter(t=>!t.done && t.date<todayIso()) : [];
+  const cb = $("#todo-carry");
+  cb.hidden = !carry.length;
+  if (carry.length) cb.textContent = `Carry over ${carry.length} unfinished from earlier`;
+
   if (!list.length){ el.innerHTML = `<div class="empty">Nothing on the list for this day.</div>`; return; }
   el.innerHTML = list.map(t=>`<div class="todo-row${t.done?" done":""}">
     <button class="todo-check" data-tc="${t.id}" aria-label="Mark done">✓</button>
@@ -1435,6 +1463,12 @@ function addTodo(){
   input.value = "";
   renderTodos(); renderWeekNav();
 }
+$("#todo-carry").onclick = ()=>{
+  const today = todayIso();
+  let n = 0;
+  todos.forEach(t=>{ if (!t.done && t.date<today){ t.date = today; n++; } });
+  if (n){ save("db_todos",todos); renderTodos(); renderWeekNav(); }
+};
 $("#todo-add-btn").onclick = addTodo;
 $("#todo-input").addEventListener("keydown", e=>{ if(e.key==="Enter") addTodo(); });
 function renderStreakNudge(){
@@ -1849,7 +1883,7 @@ function renderList(){
   }));
 }
 
-function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderWeekNav(); renderTodos(); renderList(); renderReview(); }
+function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderWeekNav(); renderTodos(); renderList(); renderReview(); renderBackupLine(); }
 
 /* =====================================================
    REVIEW
@@ -2130,12 +2164,35 @@ $("#heat-prev").onclick = ()=>{ heatMonth.setMonth(heatMonth.getMonth()-1); rend
 $("#heat-next").onclick = ()=>{ if(!$("#heat-next").disabled){ heatMonth.setMonth(heatMonth.getMonth()+1); renderHeatmap(); } };
 
 /* --- combined report with period navigation --- */
-let repPeriod = "week";   // "week" (calendar Mon–Sun) | "month" (calendar month)
-let repOffset = 0;        // 0 = current period, 1 = one back, ...
+let repPeriod = "week";   // "week" (calendar Mon–Sun) | "month" (calendar month) | "custom" (repFrom..repTo)
+let repOffset = 0;        // 0 = current period, 1 = one back, ...  (ignored when custom)
+let repTo = todayIso();
+let repFrom = (()=>{ const d=new Date(); d.setDate(d.getDate()-29); return isoDate(d); })();
+
+function rangeLabelIso(s, e){
+  const a = parseIso(s), b = parseIso(e);
+  const showY = a.getFullYear()!==new Date().getFullYear() || b.getFullYear()!==new Date().getFullYear();
+  const one = (d, withY)=>`${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}${withY?`, ${d.getFullYear()}`:""}`;
+  if (s===e) return one(a, showY);
+  if (a.getFullYear()!==b.getFullYear()) return `${one(a,true)} – ${one(b,true)}`;
+  if (a.getMonth()===b.getMonth()) return `${MONTHS_SHORT[a.getMonth()]} ${a.getDate()}–${b.getDate()}${showY?`, ${a.getFullYear()}`:""}`;
+  return `${one(a,false)} – ${one(b, showY)}`;
+}
 
 function periodRange(p, offset){
   const now = new Date();
   const todayI = todayIso();
+  if (p==="custom"){
+    const s = repFrom<=repTo ? repFrom : repTo;      // defensive: never let the range invert
+    const e = repFrom<=repTo ? repTo : repFrom;
+    const label = rangeLabelIso(s, e);
+    return {
+      match: iso => iso>=s && iso<=e,
+      days: Math.round((parseIso(e)-parseIso(s))/86400000) + 1,
+      label, shortLabel: label,
+      current: false,
+    };
+  }
   if (p==="week"){
     const start = mondayOf(now); start.setDate(start.getDate() - offset*7);
     const end = new Date(start); end.setDate(end.getDate()+6);
@@ -2170,6 +2227,14 @@ function periodRange(p, offset){
 }
 
 function repRanges(){
+  if (repPeriod==="custom"){
+    const cur = periodRange("custom", 0);
+    const start = repFrom<=repTo ? repFrom : repTo;
+    const pe = parseIso(start); pe.setDate(pe.getDate()-1);           // the equally-long window just before
+    const ps = new Date(pe); ps.setDate(ps.getDate()-cur.days+1);
+    const s = isoDate(ps), e = isoDate(pe);
+    return {cur, prev:{match: iso=>iso>=s && iso<=e, days:cur.days}, prevLabel:`the ${cur.days} days before`};
+  }
   const cur = periodRange(repPeriod, repOffset);
   const prevFull = periodRange(repPeriod, repOffset+1);
   // For the in-progress current period, cap the previous period to the same number of elapsed days (fair comparison)
@@ -2193,6 +2258,51 @@ function repRanges(){
     }
   }
   return {cur, prev, prevLabel};
+}
+
+/* --- gout flares: consecutive logged days count as ONE episode --- */
+function goutEpisodes(){
+  const sevByDay = {};
+  journal.filter(e=>e.goutSeverity).forEach(e=>{
+    const rank = GOUT_LEVELS.findIndex(g=>g.id===e.goutSeverity);
+    if (rank<0) return;                                    // unknown severity from an old import
+    if (sevByDay[e.date]==null || rank>sevByDay[e.date]) sevByDay[e.date] = rank;
+  });
+  const eps = [];
+  let cur = null;
+  for (const d of Object.keys(sevByDay).sort()){
+    if (cur){
+      const nx = parseIso(cur.end); nx.setDate(nx.getDate()+1);
+      if (isoDate(nx)===d){ cur.end = d; cur.peak = Math.max(cur.peak, sevByDay[d]); continue; }
+      eps.push(cur);
+    }
+    cur = {start:d, end:d, peak:sevByDay[d]};
+  }
+  if (cur) eps.push(cur);
+  return eps.map(ep=>{
+    const dates = []; const d = parseIso(ep.start);
+    while (isoDate(d)<=ep.end){ dates.push(isoDate(d)); d.setDate(d.getDate()+1); }
+    return {...ep, dates,
+      days: dates.length,
+      peakLabel: GOUT_LEVELS[ep.peak].label,
+      ongoing: ep.end===todayIso()};
+  });
+}
+/* episodes touching the given period's entries — an episode keeps its TRUE full span
+   even when it starts before or runs past the period, which is what a doctor needs */
+function goutEpisodesIn(periodEntries){
+  const inPeriod = new Set(periodEntries.filter(e=>e.goutSeverity).map(e=>e.date));
+  if (!inPeriod.size) return [];
+  return goutEpisodes().filter(ep=>ep.dates.some(d=>inPeriod.has(d)));
+}
+function goutEpLabel(ep){
+  const s = parseIso(ep.start), e = parseIso(ep.end);
+  const span = ep.days===1
+    ? `${MONTHS_SHORT[s.getMonth()]} ${s.getDate()}`
+    : s.getMonth()===e.getMonth()
+      ? `${MONTHS_SHORT[s.getMonth()]} ${s.getDate()}–${e.getDate()}`
+      : `${MONTHS_SHORT[s.getMonth()]} ${s.getDate()} – ${MONTHS_SHORT[e.getMonth()]} ${e.getDate()}`;
+  return `${ep.days} day${ep.days===1?"":"s"} (${span}${ep.ongoing?", ongoing":""}), peak ${ep.peakLabel}`;
 }
 
 function buildCombinedReport(){
@@ -2254,11 +2364,9 @@ function buildCombinedReport(){
     }
     lines.push(poopLine);
   } else lines.push(`Poops: none logged`);
-  const goutEntries = entries.filter(e=>e.goutSeverity);
-  if (goutEntries.length){
-    const bySeverity = GOUT_LEVELS.filter(g=>goutEntries.some(e=>e.goutSeverity===g.id))
-      .map(g=>`${g.label} ${goutEntries.filter(e=>e.goutSeverity===g.id).length}`);
-    lines.push(`Gout: ${goutEntries.length} flare${goutEntries.length===1?"":"s"} (${bySeverity.join(", ")})`);
+  const goutEps = goutEpisodesIn(entries);
+  if (goutEps.length){
+    lines.push(`Gout: ${goutEps.length} flare${goutEps.length===1?"":"s"} — ${goutEps.map(goutEpLabel).join(" · ")}`);
   } else lines.push(`Gout: none logged`);
 
   /* — Money — */
@@ -2414,7 +2522,7 @@ function renderReportHeadline(){
 
   const ps = poops.filter(x=>r.match(x.date));
   const wentDays = new Set(ps.map(x=>x.date)).size;
-  const goutCount = entries.filter(e=>e.goutSeverity).length;
+  const goutCount = goutEpisodesIn(entries).length;   // flares, not flare-days — matches the words below
 
   const sigs=[];
   sigs.push(moodAvg!=null ? `Mood <b>${moodAvg.toFixed(1)}</b>${rpArrow(moodAvg, prevMoodAvg, true)}` : `Mood <span class="na">—</span>`);
@@ -2434,12 +2542,17 @@ function applyRepDetails(){
 $("#rp-details").onclick = ()=>{ repTextOpen = !repTextOpen; applyRepDetails(); };
 
 function renderReport(){
+  const custom = repPeriod==="custom";
   $("#rp-week").setAttribute("aria-pressed", repPeriod==="week");
   $("#rp-month").setAttribute("aria-pressed", repPeriod==="month");
+  $("#rp-range").setAttribute("aria-pressed", custom);
+  $("#rp-nav").hidden = custom;
+  $("#rp-rangerow").hidden = !custom;
+  if (custom){ $("#rp-from").value = repFrom; $("#rp-to").value = repTo; }
   const r = periodRange(repPeriod, repOffset);
   $("#rp-label").textContent = r.label;
   $("#rp-next").disabled = repOffset===0;
-  $("#rp-current").hidden = repOffset===0;
+  $("#rp-current").hidden = custom || repOffset===0;
   renderReportHeadline();
   renderReportCharts();
   $("#rp-text").textContent = buildCombinedReport();
@@ -2447,6 +2560,9 @@ function renderReport(){
 }
 $("#rp-week").onclick = ()=>{ repPeriod="week"; repOffset=0; renderReport(); };
 $("#rp-month").onclick = ()=>{ repPeriod="month"; repOffset=0; renderReport(); };
+$("#rp-range").onclick = ()=>{ repPeriod="custom"; renderReport(); };
+$("#rp-from").onchange = ()=>{ const v=$("#rp-from").value; if(v){ repFrom=v; if(repFrom>repTo) repTo=repFrom; } renderReport(); };
+$("#rp-to").onchange   = ()=>{ const v=$("#rp-to").value;   if(v){ repTo=v;   if(repTo<repFrom) repFrom=repTo; } renderReport(); };
 $("#rp-prev").onclick = ()=>{ repOffset++; renderReport(); };
 $("#rp-next").onclick = ()=>{ if(repOffset>0){ repOffset--; renderReport(); } };
 $("#rp-current").onclick = ()=>{ repOffset=0; renderReport(); };
@@ -2604,6 +2720,28 @@ document.addEventListener("keydown", e=>{
   if (!$("#bin-wrap").hidden) $("#bin-wrap").hidden = true;
 });
 
+function markExported(){
+  lastExport = todayIso();
+  save("db_lastexport", lastExport);
+  renderBackupLine();
+}
+function renderBackupLine(){
+  const el = $("#backup-line");
+  if (!el) return;
+  if (!expenses.length && !journal.length && !poops.length && !todos.length){
+    el.textContent = ""; el.className = "backupline"; return;
+  }
+  if (!lastExport){
+    el.textContent = "Never backed up — press “Export data” to keep a copy.";
+    el.className = "backupline warn";
+    return;
+  }
+  const days = Math.round((parseIso(todayIso()) - parseIso(lastExport)) / 86400000);
+  const when = days<=0 ? "today" : days===1 ? "yesterday" : `${days} days ago`;
+  el.textContent = `Last backup: ${when}`;
+  el.className = "backupline" + (days>=30 ? " warn" : "");
+}
+
 dlg.download.onclick = ()=>{
   try{
     const blob = new Blob([dlg.text.value], {type:"application/json"});
@@ -2612,6 +2750,7 @@ dlg.download.onclick = ()=>{
     a.download = `daybook-backup-${todayIso()}.json`;
     a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    markExported();
     setStatus("Download started.", true);
   }catch(e){ setStatus("Download failed here — use Copy to clipboard instead.", false); }
 };
@@ -2642,6 +2781,7 @@ dlg.primary.onclick = async ()=>{
     if (!copied){
       try{ dlg.text.select(); copied = document.execCommand("copy"); }catch(e){}
     }
+    if (copied) markExported();
     setStatus(copied ? "Copied — now paste it into Import on your other device." : "Couldn't copy automatically — select the text and copy it manually.", copied);
     return;
   }
