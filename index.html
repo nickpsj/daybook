@@ -482,9 +482,8 @@ svg circle[data-cat]{cursor:pointer}
 .rpmodes{margin-top:4px}
 .rpmodes .chip{flex:1; justify-content:center; padding:7px 10px; font-size:13px; font-weight:600}
 .rprange{display:flex; gap:10px; margin-top:12px}
-.rprange label{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
-.rprange input{background:var(--ground); border:1px solid var(--hairline); border-radius:7px; padding:7px 9px; font-size:13.5px; color:var(--ink); width:100%; min-width:0; text-transform:none; letter-spacing:normal; font-weight:400}
-.rprange input:focus{outline:2px solid var(--accent); outline-offset:-1px}
+.rprange .field{flex:1; min-width:0}      /* reuses .field/.field label/.field input — same as the expense form */
+.rprange .field input{width:100%; min-width:0}
 .sumtext{white-space:pre-wrap; overflow-wrap:break-word; font-size:13.5px; line-height:1.75; background:var(--ground); border:1px solid var(--hairline); border-radius:8px; padding:13px 15px; margin-top:12px}
 .sumactions{display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap}
 
@@ -775,8 +774,8 @@ svg circle[data-cat]{cursor:pointer}
         </div>
         <button class="today-link" id="rp-current" hidden style="display:block; margin:4px auto 0">Back to current</button>
         <div class="rprange" id="rp-rangerow" hidden>
-          <label>From <input type="date" id="rp-from"></label>
-          <label>To <input type="date" id="rp-to"></label>
+          <div class="field"><label for="rp-from">From</label><input type="date" id="rp-from"></div>
+          <div class="field"><label for="rp-to">To</label><input type="date" id="rp-to"></div>
         </div>
         <div id="rp-headline"></div>
         <div id="rp-charts"></div>
