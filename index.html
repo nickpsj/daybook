@@ -536,6 +536,9 @@ svg circle[data-cat]{cursor:pointer}
   .moods{flex-wrap:nowrap}
   .moods .mood{flex:1; justify-content:center; gap:4px; padding:7px 4px; font-size:12px}
   .moods .mood .dot{flex:0 0 auto}
+  .pbuttons{flex-wrap:nowrap}
+  .pbuttons .chip{flex:1; justify-content:center; gap:4px; padding:6px 2px; font-size:11.5px}
+  .pbuttons .chip .dot{flex:0 0 auto}
 }
 
 /* ---------- undo toast ---------- */
@@ -700,6 +703,20 @@ svg circle[data-cat]{cursor:pointer}
         <button class="navbtn" id="p-wnext" aria-label="Next week" type="button">›</button>
       </div>
       <div class="strip" id="p-strip"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Pee log</h3><span class="hint" id="pe-hint"></span></div>
+      <div class="chartbody">
+        <div class="ptoday" id="pe-today"></div>
+        <div class="chips pbuttons" id="pe-buttons"></div>
+      </div>
+      <div class="monthnav" style="justify-content:center; padding:2px 18px 0">
+        <button class="navbtn" id="pe-wprev" aria-label="Previous week" type="button">‹</button>
+        <span class="cal-mlabel" id="pe-wlabel" style="font-size:13.5px"></span>
+        <button class="navbtn" id="pe-wnext" aria-label="Next week" type="button">›</button>
+      </div>
+      <div class="strip" id="pe-strip"></div>
     </section>
 
     <section class="card">
@@ -905,6 +922,14 @@ const POOPS = [
 ];
 const poopById = id => POOPS.find(p=>p.id===id);
 
+const PEE = [
+  {id:"normal",  label:"Normal",  v:"--mood-5"},
+  {id:"bubbles", label:"Bubbles", v:"--cat-3"},
+  {id:"foamy",   label:"Foamy",   v:"--mood-2"},
+  {id:"dark",    label:"Dark",    v:"--mood-1"},
+];
+const peeById = id => PEE.find(p=>p.id===id);
+
 const PROMPTS = [
   "What's one thing that went well today?",
   "What's taking up most of your headspace right now?",
@@ -931,6 +956,7 @@ let expenses = load("db_expenses",[]);   // {id, amt, cat, note, date:"YYYY-MM-D
 let journal  = load("db_journal",[]);    // {id, date, mood, habits, prompt, text, ts}
 let budgets  = load("db_budgets",{});    // {_all: n, <catId>: n}
 let poops    = load("db_poops",[]);      // {id, date, type, ts}
+let pees     = load("db_pees",[]);       // {id, date, type, ts}
 let todos    = load("db_todos",[]);      // {id, date, text, done, ts}
 let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop"|"todo", item, delAt}
 let userEmail = load("db_email","");
@@ -1634,7 +1660,7 @@ $("#j-cancel").onclick = ()=>{
 };
 
 /* --- mood strip --- */
-let moodWeekOff = 0, poopWeekOff = 0;   // 0 = current week, 1 = week before, ...
+let moodWeekOff = 0, poopWeekOff = 0, peeWeekOff = 0;   // 0 = current week, 1 = week before, ...
 function renderStrip(){
   const start = mondayOf(new Date()); start.setDate(start.getDate() - moodWeekOff*7);
   const days = [...Array(7)].map((_,i)=>{ const d=new Date(start); d.setDate(d.getDate()+i); return isoDate(d); });
@@ -1760,6 +1786,65 @@ function renderPoop(){
 }
 $("#p-wprev").onclick = ()=>{ poopWeekOff++; renderPoop(); };
 $("#p-wnext").onclick = ()=>{ if(poopWeekOff>0){ poopWeekOff--; renderPoop(); } };
+
+function renderPee(){
+  const today = todayIso();
+  const todays = pees.filter(p=>p.date===today).sort((a,b)=>a.ts-b.ts);
+
+  $("#pe-today").innerHTML = (todays.length
+    ? `Today:` + todays.map(p=>{
+        const t = peeById(p.type);
+        const time = new Date(p.ts).toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+        return ` <span class="poopchip"><span class="dot" style="background:var(${t.v})"></span>${t.label} <span class="t">${time}</span><button class="px" data-pedel="${p.id}" aria-label="Delete">×</button></span>`;
+      }).join("")
+    : `Nothing yet today — log one when it happens.`);
+
+  $("#pe-buttons").innerHTML = PEE.map(t=>
+    `<button class="chip" data-pe="${t.id}" style="--c:var(${t.v})"><span class="dot" style="background:var(${t.v})"></span>${t.label}</button>`).join("");
+
+  const byDay = {};
+  pees.forEach(p=>(byDay[p.date]=byDay[p.date]||[]).push(p));
+
+  const peStart = mondayOf(new Date()); peStart.setDate(peStart.getDate() - peeWeekOff*7);
+  const days7 = [...Array(7)].map((_,i)=>{ const d=new Date(peStart); d.setDate(d.getDate()+i); return isoDate(d); });
+  $("#pe-wlabel").textContent = weekRangeLabel(isoDate(peStart));
+  $("#pe-wnext").disabled = peeWeekOff===0;
+  const n7 = days7.reduce((s,d)=>s+(byDay[d]||[]).length,0);
+  const went7 = days7.filter(d=>(byDay[d]||[]).length).length;
+  $("#pe-hint").textContent = n7 ? `${n7} this week · went on ${went7} of 7` : "tap a button below to log one";
+
+  $("#pe-buttons").querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>{
+    pees.push({id:uid(), date:todayIso(), type:b.dataset.pe, ts:Date.now()});
+    save("db_pees",pees); renderPee(); renderReview();
+  });
+  $("#pe-today").querySelectorAll("[data-pedel]").forEach(b=>b.onclick=()=>{
+    const item = pees.find(p=>p.id===b.dataset.pedel);
+    pees = pees.filter(p=>p.id!==b.dataset.pedel);
+    save("db_pees",pees);
+    if (item) trashItem("pee", item);
+    renderPee(); renderReview();
+  });
+
+  $("#pe-strip").innerHTML = days7.map(day=>{
+    const list = byDay[day];
+    const d = parseIso(day);
+    const last = list && list.length ? [...list].sort((a,b)=>b.ts-a.ts)[0] : null;
+    const t = last ? peeById(last.type) : null;
+    const names = list ? list.map(p=>peeById(p.type).label).join(", ") : "";
+    return `<div class="sday${day===todayIso()?" today":""}" data-day="${day}" data-pees="${esc(names)}">
+      <span class="b${t?" has":""}" style="${t?`background:var(${t.v})`:""}"></span>
+      <span class="l">${d.getDate()}</span></div>`;
+  }).join("");
+  $("#pe-strip").querySelectorAll(".sday").forEach(el=>{
+    el.addEventListener("mousemove",e=>{
+      const d = parseIso(el.dataset.day);
+      showTip(`<span class="t-k">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span><br><span class="t-v">${el.dataset.pees||"none logged"}</span>`, e.clientX, e.clientY);
+    });
+    el.addEventListener("mouseleave",hideTip);
+  });
+}
+$("#pe-wprev").onclick = ()=>{ peeWeekOff++; renderPee(); };
+$("#pe-wnext").onclick = ()=>{ if(peeWeekOff>0){ peeWeekOff--; renderPee(); } };
 
 /* --- entries list --- */
 $("#j-search").addEventListener("input", e=>{ query = e.target.value.trim(); renderList(); });
@@ -1888,7 +1973,7 @@ function renderList(){
   }));
 }
 
-function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderWeekNav(); renderTodos(); renderList(); renderReview(); renderBackupLine(); }
+function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderPee(); renderWeekNav(); renderTodos(); renderList(); renderReview(); renderBackupLine(); }
 
 /* =====================================================
    REVIEW
@@ -2369,6 +2454,11 @@ function buildCombinedReport(){
     }
     lines.push(poopLine);
   } else lines.push(`Poops: none logged`);
+  const pes = pees.filter(x=>r.match(x.date));
+  if (pes.length){
+    const byPeeType = PEE.filter(t=>pes.some(x=>x.type===t.id)).map(t=>`${t.label} ${pes.filter(x=>x.type===t.id).length}`);
+    lines.push(`Pees: ${pes.length} total (${byPeeType.join(", ")})`);
+  } else lines.push(`Pees: none logged`);
   const goutEps = goutEpisodesIn(entries);
   if (goutEps.length){
     lines.push(`Gout: ${goutEps.length} flare${goutEps.length===1?"":"s"} — ${goutEps.map(goutEpLabel).join(" · ")}`);
@@ -2489,6 +2579,15 @@ function renderReportCharts(){
   }
   blocks.push(`<div class="rc-block"><div class="rc-label">Poop</div>${poopHtml}</div>`);
 
+  const pes = pees.filter(x=>r.match(x.date));
+  let peeHtml;
+  if (!pes.length){
+    peeHtml = `<div class="rc-empty">None logged this period.</div>`;
+  } else {
+    peeHtml = mdistCols(PEE.map(t=>({label:t.label, n:pes.filter(x=>x.type===t.id).length, v:t.v})));
+  }
+  blocks.push(`<div class="rc-block"><div class="rc-label">Pee</div>${peeHtml}</div>`);
+
   const goutEntries = entries.filter(e=>e.goutSeverity);
   let goutHtml;
   if (!goutEntries.length){
@@ -2582,7 +2681,7 @@ $("#b-edit").onclick = ()=>{ budgetEdit = !budgetEdit; renderBudgets(); };
 /* =====================================================
    RECENTLY DELETED (trash + undo)
 ===================================================== */
-const KIND_LABEL = {expense:"Expense", entry:"Journal entry", poop:"Poop log", todo:"To-do"};
+const KIND_LABEL = {expense:"Expense", entry:"Journal entry", poop:"Poop log", pee:"Pee log", todo:"To-do"};
 
 function purgeTrash(){
   const cutoff = Date.now() - 30*24*60*60*1000;
@@ -2613,6 +2712,7 @@ function restoreFromTrash(tid){
   if (t.kind==="expense" && !expenses.some(x=>x.id===t.item.id)){ expenses.push(t.item); save("db_expenses",expenses); }
   if (t.kind==="entry"   && !journal.some(x=>x.id===t.item.id)) { journal.push(t.item);  save("db_journal",journal); }
   if (t.kind==="poop"    && !poops.some(x=>x.id===t.item.id))   { poops.push(t.item);    save("db_poops",poops); }
+  if (t.kind==="pee"     && !pees.some(x=>x.id===t.item.id))    { pees.push(t.item);     save("db_pees",pees); }
   if (t.kind==="todo"    && !todos.some(x=>x.id===t.item.id))   { todos.push(t.item);    save("db_todos",todos); }
   renderSpend(); renderJournal();
   renderBinLink();
@@ -2628,6 +2728,7 @@ $("#undo-btn").onclick = ()=>{
 function binDesc(t){
   if (t.kind==="expense") return `${fmt(t.item.amt)} — ${t.item.note || catById(t.item.cat).name} (${dayLabel(t.item.date)})`;
   if (t.kind==="poop")    return `${poopById(t.item.type)?.label || "Poop"} (${dayLabel(t.item.date)})`;
+  if (t.kind==="pee")     return `${peeById(t.item.type)?.label || "Pee"} (${dayLabel(t.item.date)})`;
   if (t.kind==="todo")    return `${t.item.text} (${dayLabel(t.item.date)})`;
   const e = t.item;
   const bits = e.text || (e.gratitude||[]).filter(Boolean)[0] || e.win || (e.mood ? (moodByN(e.mood)?.label || "entry") : "entry");
@@ -2694,8 +2795,8 @@ function openDlg(mode){
   setStatus("");
   if (mode === "export"){
     dlg.title.textContent = "Export data";
-    dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, to-dos, budgets. Copy it, then Import it on your other device.";
-    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, todos, habits}, null, 2);
+    dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, pee log, to-dos, budgets. Copy it, then Import it on your other device.";
+    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, pees, todos, habits}, null, 2);
     dlg.text.readOnly = true;
     dlg.primary.textContent = "Copy to clipboard";
     dlg.download.hidden = inNativeApp;
@@ -2809,6 +2910,13 @@ dlg.primary.onclick = async ()=>{
     poops = pm.list; pAdded = pm.added;
     save("db_poops",poops);
   }
+  let peAdded = 0;
+  if (Array.isArray(data.pees)){
+    const okPe = data.pees.filter(x=>x && typeof x.id==="string" && typeof x.date==="string" && typeof x.type==="string");
+    const pem = mergeById(pees, okPe);
+    pees = pem.list; peAdded = pem.added;
+    save("db_pees",pees);
+  }
   let tAdded = 0;
   if (Array.isArray(data.todos)){
     const okT = data.todos.filter(x=>x && typeof x.id==="string" && typeof x.date==="string" && typeof x.text==="string");
@@ -2827,8 +2935,8 @@ dlg.primary.onclick = async ()=>{
   }
   save("db_expenses",expenses); save("db_journal",journal);
   renderSpend(); renderJournal();
-  const added = e.added+j.added+pAdded+tAdded;
-  setStatus(`Imported: ${e.added} expense${e.added===1?"":"s"}, ${j.added} journal entr${j.added===1?"y":"ies"}, ${pAdded} poop log${pAdded===1?"":"s"}, ${tAdded} to-do${tAdded===1?"":"s"} added${added===0?" (everything was already here)":""}.`, true);
+  const added = e.added+j.added+pAdded+peAdded+tAdded;
+  setStatus(`Imported: ${e.added} expense${e.added===1?"":"s"}, ${j.added} journal entr${j.added===1?"y":"ies"}, ${pAdded} poop log${pAdded===1?"":"s"}, ${peAdded} pee log${peAdded===1?"":"s"}, ${tAdded} to-do${tAdded===1?"":"s"} added${added===0?" (everything was already here)":""}.`, true);
 };
 
 /* ---------- boot ---------- */
