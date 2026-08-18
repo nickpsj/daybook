@@ -172,7 +172,11 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .tbucket .cnt{color:var(--ink-3); font-weight:500; font-variant-numeric:tabular-nums}
 .tbucket + .jentry{border-top:0}
 .txn{display:flex; align-items:center; gap:12px; padding:9px 18px; border-top:1px solid var(--hairline)}
+#recur-list .txn:first-child{border-top:0}
 .txn:hover{background:var(--surface-2)}
+.recur-row{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13.5px; color:var(--ink-2)}
+.recur-row input{width:17px; height:17px; accent-color:var(--accent)}
+.recur-ic{color:var(--ink-3); font-size:11px}
 .txn .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto}
 .txn .what{flex:1; min-width:0}
 .txn .note{font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -583,8 +587,24 @@ svg circle[data-cat]{cursor:pointer}
         <div class="field f-note"><label for="e-note">What was it?</label><input id="e-note" type="text" placeholder="Coffee, groceries, train…" maxlength="80"></div>
         <div class="field f-date"><label for="e-date">Date</label><input id="e-date" type="date"></div>
       </div>
+      <div class="jlabel-row" style="margin-top:2px">
+        <span class="jlabel" style="margin-bottom:0">Category</span>
+        <button class="hedit-btn" id="c-edit" type="button">Edit</button>
+      </div>
       <div class="chips" id="e-cats" role="group" aria-label="Category"></div>
+      <div class="hadd" id="c-addrow" hidden>
+        <input id="c-input" type="text" placeholder="Add a category…" maxlength="30">
+        <button class="btn ghost" id="c-add-btn" type="button">Add</button>
+      </div>
+      <div id="e-recurrow">
+        <label class="recur-row"><input type="checkbox" id="e-recur"> Repeats monthly</label>
+      </div>
       <div class="actions"><button class="btn ghost" id="e-cancel" hidden>Cancel</button><button class="btn" id="e-add">Add expense</button></div>
+    </section>
+
+    <section class="card" id="recur-card" hidden>
+      <div class="card-h"><h3>Recurring</h3><span class="hint">repeats monthly</span></div>
+      <div id="recur-list" style="padding-bottom:6px"></div>
     </section>
 
     <div class="spendhead">
@@ -658,10 +678,13 @@ svg circle[data-cat]{cursor:pointer}
       <div class="jlabel">Gout flare?</div>
       <div class="moods" id="j-gout" role="group" aria-label="Gout flare severity"></div>
 
-      <div class="field" style="margin:8px 0 16px">
+      <div class="field" style="margin:8px 0 8px">
         <label for="j-g1">Grateful for</label>
         <input id="j-g1" type="text" placeholder="What are you grateful for today?" maxlength="80">
       </div>
+      <div class="field" id="j-g2-row" style="margin:0 0 8px" hidden><input id="j-g2" type="text" placeholder="Anything else?" maxlength="80"></div>
+      <div class="field" id="j-g3-row" style="margin:0 0 8px" hidden><input id="j-g3" type="text" placeholder="One more?" maxlength="80"></div>
+      <button class="shuffle" id="j-g-add" type="button" style="margin-bottom:16px">+ Add another</button>
 
       <div class="jlabel-row">
         <span class="jlabel" style="margin-bottom:0">Today I…</span>
@@ -883,17 +906,8 @@ svg circle[data-cat]{cursor:pointer}
 <script>
 "use strict";
 /* ---------- data ---------- */
-const CATS = [
-  {id:"food",  name:"Food & drink",  v:"--cat-1"},
-  {id:"groc",  name:"Groceries",     v:"--cat-2"},
-  {id:"trans", name:"Transport",     v:"--cat-3"},
-  {id:"home",  name:"Housing & bills",v:"--cat-4"},
-  {id:"fun",   name:"Entertainment", v:"--cat-5"},
-  {id:"shop",  name:"Shopping",      v:"--cat-6"},
-  {id:"health",name:"Health",        v:"--cat-7"},
-  {id:"other", name:"Other",         v:"--cat-8"},
-];
-const catById = id => CATS.find(c=>c.id===id) || CATS[7];
+const CAT_COLORS = ["--cat-1","--cat-2","--cat-3","--cat-4","--cat-5","--cat-6","--cat-7","--cat-8"];
+const MAX_CATS = 12;   // higher than HABIT_COLORS.length(8): unlike habits, all 8 default categories start active with no headroom, so the cap must sit above the starting count or nothing could ever be added
 
 const MOODS = [
   {n:1,label:"Rough",v:"--mood-1"},
@@ -961,6 +975,7 @@ let todos    = load("db_todos",[]);      // {id, date, text, done, ts}
 let trash    = load("db_trash",[]);      // {tid, kind:"expense"|"entry"|"poop"|"todo", item, delAt}
 let userEmail = load("db_email","");
 let lastExport = load("db_lastexport","");   // ISO date of the last successful export
+let recurring = load("db_recurring",[]);     // {id, amt, cat, note, day, removed?} — templates, not expenses
 
 let habits = load("db_habits", null);    // {id, name, v, removed?}
 if (!habits){
@@ -979,6 +994,27 @@ const habitById = id => habits.find(h=>h.id===id);
 function nextHabitColor(){
   const used = activeHabits().map(h=>h.v);
   return HABIT_COLORS.find(c=>!used.includes(c)) || HABIT_COLORS[activeHabits().length % HABIT_COLORS.length];
+}
+
+let cats = load("db_cats", null);   // {id, name, v, removed?}
+if (!cats){
+  cats = [
+    {id:"food",  name:"Food & drink",  v:"--cat-1"},
+    {id:"groc",  name:"Groceries",     v:"--cat-2"},
+    {id:"trans", name:"Transport",     v:"--cat-3"},
+    {id:"home",  name:"Housing & bills",v:"--cat-4"},
+    {id:"fun",   name:"Entertainment", v:"--cat-5"},
+    {id:"shop",  name:"Shopping",      v:"--cat-6"},
+    {id:"health",name:"Health",        v:"--cat-7"},
+    {id:"other", name:"Other",         v:"--cat-8"},
+  ];
+  save("db_cats", cats);
+}
+const activeCats = () => cats.filter(c=>!c.removed);
+const catById = id => cats.find(c=>c.id===id) || cats[cats.length-1];
+function nextCatColor(){
+  const used = activeCats().map(c=>c.v);
+  return CAT_COLORS.find(c=>!used.includes(c)) || CAT_COLORS[activeCats().length % CAT_COLORS.length];
 }
 
 /* ---------- helpers ---------- */
@@ -1060,12 +1096,51 @@ let eQuery = "";
 
 /* --- quick entry --- */
 const catsEl = $("#e-cats");
+let catEditMode = false;
 function renderCatChips(){
-  catsEl.innerHTML = CATS.map(c=>
-    `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id===selCat}" style="--c:var(${c.v})"><span class="dot"></span>${c.name}</button>`
-  ).join("");
-  catsEl.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ selCat=b.dataset.cat; save("db_lastcat",selCat); renderCatChips(); });
+  const act = activeCats();
+  $("#c-edit").textContent = catEditMode ? "Done" : "Edit";
+
+  if (catEditMode){
+    catsEl.innerHTML = act.map(c=>
+      `<span class="habit editable"><span class="dot" style="background:var(${c.v}); width:10px; height:10px; border-radius:50%"></span>${esc(c.name)}<button class="hx" data-cx="${c.id}" aria-label="Remove ${esc(c.name)}" ${act.length<=1?"disabled":""}>×</button></span>`).join("");
+    $("#c-addrow").hidden = false;
+    const atCap = act.length >= MAX_CATS;
+    $("#c-input").disabled = atCap;
+    $("#c-input").placeholder = atCap ? `${MAX_CATS} max — remove one first` : "Add a category…";
+    $("#c-add-btn").disabled = atCap;
+    catsEl.querySelectorAll("[data-cx]").forEach(b=>b.onclick=()=>{
+      if (activeCats().length<=1) return;
+      const c = catById(b.dataset.cx);
+      if (c){
+        c.removed = true;
+        if (selCat===c.id){ selCat = activeCats()[0]?.id || selCat; save("db_lastcat",selCat); }
+        save("db_cats",cats);
+      }
+      renderCatChips();
+    });
+  } else {
+    $("#c-addrow").hidden = true;
+    catsEl.innerHTML = act.map(c=>
+      `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id===selCat}" style="--c:var(${c.v})"><span class="dot"></span>${esc(c.name)}</button>`
+    ).join("");
+    catsEl.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ selCat=b.dataset.cat; save("db_lastcat",selCat); renderCatChips(); });
+  }
 }
+function addCat(){
+  const name = $("#c-input").value.trim();
+  if (!name || activeCats().length >= MAX_CATS) return;
+  const revived = cats.find(c=>c.removed && c.name.toLowerCase()===name.toLowerCase());
+  if (revived){ revived.removed = false; }
+  else if (cats.some(c=>!c.removed && c.name.toLowerCase()===name.toLowerCase())){ $("#c-input").value=""; return; }
+  else cats.push({id:uid(), name, v:nextCatColor()});
+  save("db_cats",cats);
+  $("#c-input").value = "";
+  renderCatChips();
+}
+$("#c-edit").onclick = ()=>{ catEditMode = !catEditMode; renderCatChips(); };
+$("#c-add-btn").onclick = addCat;
+$("#c-input").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
 $("#e-date").value = todayIso();
 
 function addExpense(){
@@ -1077,13 +1152,18 @@ function addExpense(){
     const e = expenses.find(x=>x.id===editingExpense);
     if (e){ e.amt=rounded; e.cat=selCat; e.note=note; e.date=date; }
     stopEditExpense();
+  } else if ($("#e-recur").checked){
+    const recurId = uid();
+    recurring.push({id:recurId, amt:rounded, cat:selCat, note, day:parseIso(date).getDate()});
+    save("db_recurring",recurring);
+    expenses.push({id:uid(), amt:rounded, cat:selCat, note, date, ts:Date.now(), recurId});
   } else {
     expenses.push({id:uid(), amt:rounded, cat:selCat, note, date, ts:Date.now()});
   }
   save("db_expenses",expenses);
-  $("#e-amt").value=""; $("#e-note").value="";
+  $("#e-amt").value=""; $("#e-note").value=""; $("#e-recur").checked=false;
   const d = parseIso(date); viewMonth = new Date(d.getFullYear(), d.getMonth(), 1);
-  renderSpend();
+  renderSpend(); renderRecurring();
   $("#e-amt").focus();
 }
 $("#e-add").onclick = addExpense;
@@ -1097,6 +1177,7 @@ function startEditExpense(id){
   selCat = e.cat; renderCatChips();
   $("#e-add").textContent = "Save changes";
   $("#e-cancel").hidden = false;
+  $("#e-recurrow").hidden = true;
   document.querySelector(".entry").scrollIntoView({behavior:"smooth", block:"start"});
   $("#e-amt").focus();
 }
@@ -1104,10 +1185,52 @@ function stopEditExpense(){
   editingExpense = null;
   $("#e-add").textContent = "Add expense";
   $("#e-cancel").hidden = true;
+  $("#e-recurrow").hidden = false;
 }
 $("#e-cancel").onclick = ()=>{ $("#e-amt").value=""; $("#e-note").value=""; $("#e-date").value=todayIso(); stopEditExpense(); };
 
 $("#e-search").addEventListener("input", e=>{ eQuery = e.target.value.trim(); renderLedger(); });
+
+/* --- recurring expenses: templates that spawn one expense per month --- */
+function recurAlreadyMadeFor(templateId, mKey){
+  const inExpenses = expenses.some(e=>e.recurId===templateId && monthKey(parseIso(e.date))===mKey);
+  const inTrash = trash.some(t=>t.kind==="expense" && t.item.recurId===templateId && monthKey(parseIso(t.item.date))===mKey);
+  return inExpenses || inTrash;   // a deliberate delete of this month's instance must not be recreated
+}
+function ensureRecurring(){
+  const now = new Date();
+  const mKey = monthKey(now);
+  const dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  let changed = false;
+  recurring.filter(r=>!r.removed).forEach(r=>{
+    if (recurAlreadyMadeFor(r.id, mKey)) return;
+    const day = Math.min(r.day, dim);
+    if (day > now.getDate()) return;   // its day this month hasn't arrived yet
+    const date = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(day)}`;
+    expenses.push({id:uid(), amt:r.amt, cat:r.cat, note:r.note, date, ts:Date.now(), recurId:r.id});
+    changed = true;
+  });
+  if (changed) save("db_expenses",expenses);
+}
+function renderRecurring(){
+  const card = $("#recur-card"), el = $("#recur-list");
+  const act = recurring.filter(r=>!r.removed);
+  card.hidden = !act.length;
+  if (!act.length) return;
+  el.innerHTML = act.map(r=>{
+    const c = catById(r.cat);
+    return `<div class="txn">
+      <span class="dot" style="background:var(${c.v})"></span>
+      <div class="what"><div class="note">${esc(r.note||c.name)}</div><div class="cat">${esc(c.name)} · day ${r.day}</div></div>
+      <span class="amt num">${fmt(r.amt)}</span>
+      <button class="del" data-rstop="${r.id}" aria-label="Stop repeating">×</button></div>`;
+  }).join("");
+  el.querySelectorAll("[data-rstop]").forEach(b=>b.onclick=()=>{
+    const r = recurring.find(x=>x.id===b.dataset.rstop);
+    if (r){ r.removed = true; save("db_recurring",recurring); }
+    renderRecurring();
+  });
+}
 
 /* --- quick add: most frequent note+category combos --- */
 function renderQuickAdd(){
@@ -1184,7 +1307,7 @@ function renderDonut(){
   $("#donut-hint").textContent = MONTHS_LONG[viewMonth.getMonth()];
   if (!list.length){ body.innerHTML = `<div class="empty">Nothing logged in ${MONTHS_LONG[viewMonth.getMonth()]} yet — add an expense above and it lands here.</div>`; return; }
 
-  const totals = CATS.map(c=>({c, amt: sum(list.filter(e=>e.cat===c.id))})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
+  const totals = cats.map(c=>({c, amt: sum(list.filter(e=>e.cat===c.id))})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
   const total = sum(list);
   const R=52, C=2*Math.PI*R, GAP = totals.length>1 ? 2.5 : 0;
 
@@ -1299,7 +1422,7 @@ function renderLedger(){
       const label = e.note ? highlight(esc(e.note), eQuery) : esc(c.name);
       return `<div class="txn">
         <span class="dot" style="background:var(${c.v})"></span>
-        <div class="what"><div class="note">${label}</div><div class="cat">${esc(c.name)}</div></div>
+        <div class="what"><div class="note">${label}${e.recurId?` <span class="recur-ic" title="Repeats monthly">↻</span>`:""}</div><div class="cat">${esc(c.name)}</div></div>
         <span class="amt num">${fmt(e.amt)}</span>
         <button class="edit" data-editx="${e.id}" aria-label="Edit expense">✎</button>
         <button class="del" data-del="${e.id}" aria-label="Delete expense">×</button></div>`;
@@ -1364,7 +1487,7 @@ function renderSpend(){
   const isCurrent = monthKey(viewMonth)===monthKey(now);
   $("#m-next").disabled = isCurrent;
   $("#m-today").hidden = isCurrent;
-  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview(); renderBackupLine();
+  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview(); renderBackupLine(); renderRecurring();
 }
 
 /* =====================================================
@@ -1586,16 +1709,27 @@ jText.addEventListener("input", ()=>{
   $("#j-count").textContent = w ? `${w} word${w===1?"":"s"}` : "";
 });
 
+function updateGratRowsVisibility(){
+  $("#j-g-add").hidden = !$("#j-g2-row").hidden && !$("#j-g3-row").hidden;
+}
+$("#j-g-add").onclick = ()=>{
+  if ($("#j-g2-row").hidden){ $("#j-g2-row").hidden = false; $("#j-g2").focus(); }
+  else if ($("#j-g3-row").hidden){ $("#j-g3-row").hidden = false; $("#j-g3").focus(); }
+  updateGratRowsVisibility();
+};
+
 function checkinFields(){
   return {
-    gratitude: [$("#j-g1").value.trim()].filter(Boolean),
+    gratitude: ["j-g1","j-g2","j-g3"].map(id=>$("#"+id).value.trim()).filter(Boolean),
     win: $("#j-win").value.trim(),
     challenge: $("#j-challenge").value.trim(),
     forward: $("#j-forward").value.trim(),
   };
 }
 function clearCheckin(){
-  ["j-g1","j-win","j-challenge","j-forward"].forEach(id=>$("#"+id).value="");
+  ["j-g1","j-g2","j-g3","j-win","j-challenge","j-forward"].forEach(id=>$("#"+id).value="");
+  $("#j-g2-row").hidden = true; $("#j-g3-row").hidden = true;
+  updateGratRowsVisibility();
 }
 
 $("#j-save").onclick = ()=>{
@@ -1630,7 +1764,13 @@ function startEditEntry(id){
   selMood = e.mood || 0; renderMoodPicker();
   selGout = e.goutSeverity || ""; renderGoutPicker();
   selHabits = new Set(e.habits || []); renderHabitPicker();
-  $("#j-g1").value = (e.gratitude||[])[0] || "";
+  const grats = e.gratitude || [];
+  $("#j-g1").value = grats[0] || "";
+  $("#j-g2").value = grats[1] || "";
+  $("#j-g3").value = grats[2] || "";
+  $("#j-g2-row").hidden = !grats[1];
+  $("#j-g3-row").hidden = !grats[2];
+  updateGratRowsVisibility();
   $("#j-win").value = e.win || "";
   $("#j-challenge").value = e.challenge || "";
   $("#j-forward").value = e.forward || "";
@@ -1999,12 +2139,12 @@ function renderBudgets(){
     $("#b-edit").textContent = "Cancel";
     el.innerHTML = `<div class="bgrid">
       <label class="bfield"><span class="dot" style="background:var(--accent)"></span><span class="nm">Overall (whole month)</span><input type="number" min="0" step="1" id="bi-_all" value="${budgets._all>0?budgets._all:""}" placeholder="—"></label>
-      ${CATS.map(c=>`<label class="bfield"><span class="dot" style="background:var(${c.v})"></span><span class="nm">${esc(c.name)}</span><input type="number" min="0" step="1" id="bi-${c.id}" value="${budgets[c.id]>0?budgets[c.id]:""}" placeholder="—"></label>`).join("")}
+      ${activeCats().map(c=>`<label class="bfield"><span class="dot" style="background:var(${c.v})"></span><span class="nm">${esc(c.name)}</span><input type="number" min="0" step="1" id="bi-${c.id}" value="${budgets[c.id]>0?budgets[c.id]:""}" placeholder="—"></label>`).join("")}
       </div>
       <div class="bactions"><button class="btn" id="b-save">Save budgets</button></div>`;
     $("#b-save").onclick = ()=>{
       const next = {};
-      for (const id of ["_all", ...CATS.map(c=>c.id)]){
+      for (const id of ["_all", ...activeCats().map(c=>c.id)]){
         const v = parseFloat($("#bi-"+id).value);
         if (v>0) next[id] = Math.round(v*100)/100;
       }
@@ -2026,7 +2166,7 @@ function renderBudgets(){
   };
   const rows = [];
   if (budgets._all>0) rows.push(brow(`Overall — ${MONTHS_LONG[now.getMonth()]}`, total, budgets._all, "--accent"));
-  CATS.forEach(c=>{ if (budgets[c.id]>0) rows.push(brow(c.name, byCat[c.id]||0, budgets[c.id], c.v)); });
+  cats.forEach(c=>{ if (budgets[c.id]>0) rows.push(brow(c.name, byCat[c.id]||0, budgets[c.id], c.v)); });
 
   if (!rows.length){
     el.innerHTML = `<div class="empty">No budgets yet. Press “Edit budgets” to set monthly targets — overall, per category, or both — and progress bars will live here.</div>`;
@@ -2796,7 +2936,7 @@ function openDlg(mode){
   if (mode === "export"){
     dlg.title.textContent = "Export data";
     dlg.sub.textContent = "This is everything Daybook knows — expenses, journal, poop log, pee log, to-dos, budgets. Copy it, then Import it on your other device.";
-    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, pees, todos, habits}, null, 2);
+    dlg.text.value = JSON.stringify({daybook:1, exported:new Date().toISOString(), expenses, journal, budgets, poops, pees, todos, habits, cats, recurring}, null, 2);
     dlg.text.readOnly = true;
     dlg.primary.textContent = "Copy to clipboard";
     dlg.download.hidden = inNativeApp;
@@ -2929,6 +3069,16 @@ dlg.primary.onclick = async ()=>{
     const hm = mergeById(habits, okH);
     if (hm.added){ habits = hm.list; save("db_habits",habits); }
   }
+  if (Array.isArray(data.cats)){
+    const okC = data.cats.filter(x=>x && typeof x.id==="string" && typeof x.name==="string");
+    const cm = mergeById(cats, okC);
+    if (cm.added){ cats = cm.list; save("db_cats",cats); }
+  }
+  if (Array.isArray(data.recurring)){
+    const okR = data.recurring.filter(x=>x && typeof x.id==="string" && typeof x.amt==="number" && typeof x.day==="number");
+    const rm = mergeById(recurring, okR);
+    if (rm.added){ recurring = rm.list; save("db_recurring",recurring); }
+  }
   if (data.budgets && typeof data.budgets==="object" && !Array.isArray(data.budgets)){
     budgets = {...data.budgets, ...budgets};   // local values win on conflict
     save("db_budgets",budgets);
@@ -2941,6 +3091,7 @@ dlg.primary.onclick = async ()=>{
 
 /* ---------- boot ---------- */
 purgeTrash();
+ensureRecurring();
 renderBinLink();
 renderCatChips();
 renderMoodPicker();
