@@ -108,6 +108,12 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 
 /* ---------- quick entry ---------- */
 .entry{padding:16px 18px 18px}
+.entry-toggle{display:flex; align-items:center; gap:8px; width:100%; text-align:left; cursor:pointer}
+.entry-toggle .chev{font-size:12px; color:var(--ink-3); flex:0 0 auto; transition:transform .15s}
+.entry-toggle.open .chev{transform:rotate(90deg)}
+.et-title{font-size:15px; font-weight:600; color:var(--ink)}
+.et-sub{font-size:12.5px; color:var(--ink-3); margin-top:1px}
+#e-form-body{margin-top:14px}
 .entry .row1{display:flex; gap:10px; flex-wrap:wrap}
 .field{display:flex; flex-direction:column; gap:5px}
 .field label{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
@@ -248,7 +254,7 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .jentry .txt{margin-top:5px; white-space:pre-wrap; overflow-wrap:break-word; color:var(--ink)}
 
 /* ---------- quick add & edit-in-place ---------- */
-.qadd{display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:14px}
+.qadd{display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:12px; margin-bottom:14px}
 .qadd .qlabel{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-right:2px}
 .edit{color:var(--ink-3); font-size:12px; width:26px; height:26px; border-radius:6px; display:grid; place-items:center; opacity:0; transition:opacity .12s}
 .txn:hover .edit, .jentry:hover .edit, .edit:focus-visible{opacity:1}
@@ -358,8 +364,8 @@ svg circle[data-cat]{cursor:pointer}
 /* ---------- review: budgets ---------- */
 .brow{display:flex; align-items:center; gap:8px; margin-top:13px; font-size:13.5px}
 .brow .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
-.brow .nm{flex:1; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.brow .bnum{font-weight:500}
+.brow .nm{flex:1 1 auto; min-width:0; color:var(--ink-2); overflow-wrap:break-word}
+.brow .bnum{font-weight:500; flex:0 0 auto; white-space:nowrap; text-align:right}
 .bbar{height:7px; background:var(--surface-2); border-radius:99px; margin-top:5px; overflow:hidden}
 .bbar i{display:block; height:100%; background:var(--accent); border-radius:99px}
 .bbar i.over{background:var(--bad)}
@@ -581,7 +587,12 @@ svg circle[data-cat]{cursor:pointer}
   <!-- ============ SPENDING ============ -->
   <main id="view-spend" class="stack">
     <section class="card entry" aria-label="Add an expense">
+      <button class="entry-toggle" id="e-toggle" type="button">
+        <span class="chev" aria-hidden="true">›</span>
+        <div class="et-text"><div class="et-title">Add an expense</div><div class="et-sub" id="e-toggle-sub"></div></div>
+      </button>
       <div class="qadd" id="e-qadd" hidden></div>
+      <div id="e-form-body">
       <div class="row1">
         <div class="field f-amt"><label for="e-amt">Amount</label><input id="e-amt" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
         <div class="field f-note"><label for="e-note">What was it?</label><input id="e-note" type="text" placeholder="Coffee, groceries, train…" maxlength="80"></div>
@@ -600,6 +611,7 @@ svg circle[data-cat]{cursor:pointer}
         <label class="recur-row"><input type="checkbox" id="e-recur"> Repeats monthly</label>
       </div>
       <div class="actions"><button class="btn ghost" id="e-cancel" hidden>Cancel</button><button class="btn" id="e-add">Add expense</button></div>
+      </div>
     </section>
 
     <section class="card" id="recur-card" hidden>
@@ -672,7 +684,12 @@ svg circle[data-cat]{cursor:pointer}
       <div class="todo-list" id="todo-list"></div>
       <button class="today-link" id="todo-carry" hidden style="display:block; margin:2px auto 8px"></button>
 
-      <div class="jlabel">How are you feeling?</div>
+      <button class="entry-toggle" id="j-toggle" type="button" style="margin-top:16px">
+        <span class="chev" aria-hidden="true">›</span>
+        <div class="et-text"><div class="et-title">Today's check-in</div><div class="et-sub" id="j-toggle-sub"></div></div>
+      </button>
+      <div id="j-checkin-body">
+      <div class="jlabel" style="margin-top:14px">How are you feeling?</div>
       <div class="moods" id="j-moods" role="group" aria-label="How are you feeling?"></div>
 
       <div class="jlabel">Gout flare?</div>
@@ -711,6 +728,7 @@ svg circle[data-cat]{cursor:pointer}
       <div class="actions">
         <span class="count" id="j-count"></span>
         <button class="btn" id="j-save">Save entry</button>
+      </div>
       </div>
     </section>
 
@@ -1089,6 +1107,16 @@ tabButtons.forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 let viewMonth = new Date(); viewMonth.setDate(1);
 let sToggled = new Set();   // day-iso strings whose ledger group expand state differs from the default (most recent day open)
 let sBucketsOpen = new Set();   // time-bucket keys ("lastweek", "earliermonth", ...) the user has expanded
+let spendFormOpen = null;   // null = not yet resolved this session; resolves once on first render, then only changes via manual toggle
+function renderEntryToggle(){
+  if (spendFormOpen === null) spendFormOpen = !expenses.some(e=>e.date===todayIso());
+  const todays = expenses.filter(e=>e.date===todayIso());
+  $("#e-toggle").classList.toggle("open", spendFormOpen);
+  $("#e-toggle-sub").textContent = todays.length ? `Today: ${fmt(sum(todays))} across ${todays.length}` : "Nothing logged today yet";
+  $("#e-form-body").hidden = !spendFormOpen;
+}
+$("#e-toggle").onclick = ()=>{ spendFormOpen = !spendFormOpen; renderEntryToggle(); };
+
 let selCat = load("db_lastcat","food");
 let editingExpense = null;
 let catFilter = null;
@@ -1178,6 +1206,7 @@ function startEditExpense(id){
   $("#e-add").textContent = "Save changes";
   $("#e-cancel").hidden = false;
   $("#e-recurrow").hidden = true;
+  spendFormOpen = true; renderEntryToggle();
   document.querySelector(".entry").scrollIntoView({behavior:"smooth", block:"start"});
   $("#e-amt").focus();
 }
@@ -1359,11 +1388,17 @@ function renderBars(){
   const y = v => padT + plotH - (v/nice)*plotH;
   const slot = plotW/6, bw = Math.min(slot*0.5, 44);
 
-  const grid = [0.5,1].map(f=>`<line x1="${padL}" x2="${W-padR}" y1="${y(nice*f)}" y2="${y(nice*f)}" stroke="var(--grid)" stroke-width="1"/>`).join("");
-  const gridLabels = [0.5,1].map(f=>`<text x="${W-padR}" y="${y(nice*f)-4}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" class="num"
-    stroke="var(--surface)" stroke-width="3" paint-order="stroke">${fmt(nice*f).replace(/\.\d+$/,"")}</text>`).join("");
-
   const focusKey = monthKey(viewMonth);
+  const focusTotal = months.find(m=>m.key===focusKey)?.total || 0;
+  const focusBarNearTop = focusTotal>0 && (focusTotal/nice) > 0.82;   // its own value label would collide with the top axis label
+
+  const grid = [0.5,1].map(f=>`<line x1="${padL}" x2="${W-padR}" y1="${y(nice*f)}" y2="${y(nice*f)}" stroke="var(--grid)" stroke-width="1"/>`).join("");
+  const gridLabels = [0.5,1].map(f=>{
+    if (f===1 && focusBarNearTop) return "";
+    return `<text x="${W-padR}" y="${y(nice*f)-4}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" class="num"
+    stroke="var(--surface)" stroke-width="3" paint-order="stroke">${fmt(nice*f).replace(/\.\d+$/,"")}</text>`;
+  }).join("");
+
   const bars = months.map((m,i)=>{
     const cx = padL + slot*i + slot/2, x0 = cx-bw/2;
     const h = Math.max((m.total/nice)*plotH, m.total>0?2:0), yy = padT+plotH-h;
@@ -1420,9 +1455,10 @@ function renderLedger(){
     const rows = byDay[day].map(e=>{
       const c = catById(e.cat);
       const label = e.note ? highlight(esc(e.note), eQuery) : esc(c.name);
+      const catLine = e.note ? `<div class="cat">${esc(c.name)}</div>` : "";
       return `<div class="txn">
         <span class="dot" style="background:var(${c.v})"></span>
-        <div class="what"><div class="note">${label}${e.recurId?` <span class="recur-ic" title="Repeats monthly">↻</span>`:""}</div><div class="cat">${esc(c.name)}</div></div>
+        <div class="what"><div class="note">${label}${e.recurId?` <span class="recur-ic" title="Repeats monthly">↻</span>`:""}</div>${catLine}</div>
         <span class="amt num">${fmt(e.amt)}</span>
         <button class="edit" data-editx="${e.id}" aria-label="Edit expense">✎</button>
         <button class="del" data-del="${e.id}" aria-label="Delete expense">×</button></div>`;
@@ -1487,7 +1523,7 @@ function renderSpend(){
   const isCurrent = monthKey(viewMonth)===monthKey(now);
   $("#m-next").disabled = isCurrent;
   $("#m-today").hidden = isCurrent;
-  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview(); renderBackupLine(); renderRecurring();
+  renderQuickAdd(); renderTiles(); renderDonut(); renderBars(); renderLedger(); renderReview(); renderBackupLine(); renderRecurring(); renderEntryToggle();
 }
 
 /* =====================================================
@@ -1502,6 +1538,34 @@ let editingEntry = null;
 let jFilter = null;   // {type:"mood"|"habit", value}
 let jToggled = new Set();   // entry ids whose expand state differs from the default (most recent open)
 let jBucketsOpen = new Set();   // time-bucket keys ("lastweek", "earliermonth", ...) the user has expanded
+let jCheckinOpen = null;        // resolved fresh whenever selJDate changes; manual toggle overrides until the date changes again
+let jCheckinOpenForDate = null;
+function renderCheckinToggle(){
+  if (editingEntry){
+    $("#j-toggle").classList.add("open");
+    $("#j-checkin-body").hidden = false;
+    $("#j-toggle-sub").textContent = "Editing";
+    return;
+  }
+  if (jCheckinOpenForDate !== selJDate){
+    jCheckinOpen = !journal.some(e=>e.date===selJDate);
+    jCheckinOpenForDate = selJDate;
+  }
+  const entry = journal.filter(e=>e.date===selJDate).sort((a,b)=>b.ts-a.ts)[0];
+  $("#j-toggle").classList.toggle("open", jCheckinOpen);
+  $("#j-checkin-body").hidden = !jCheckinOpen;
+  if (entry){
+    const m = entry.mood ? moodByN(entry.mood) : null;
+    const bits = [m?.label, entry.habits?.length ? `${entry.habits.length} habit${entry.habits.length===1?"":"s"}` : null].filter(Boolean);
+    $("#j-toggle-sub").textContent = `Logged${bits.length?": "+bits.join(", "):""}`;
+  } else {
+    $("#j-toggle-sub").textContent = "Nothing logged yet";
+  }
+}
+$("#j-toggle").onclick = ()=>{
+  if (editingEntry) return;
+  jCheckinOpen = !jCheckinOpen; jCheckinOpenForDate = selJDate; renderCheckinToggle();
+};
 
 function yesterdayIso(){ const d = new Date(); d.setDate(d.getDate()-1); return isoDate(d); }
 function updateJDateLabel(){
@@ -1547,7 +1611,7 @@ function renderCalendar(){
     selJDate = b.dataset.cd;
     weekStart = mondayOf(parseIso(selJDate));
     closeCalendar();
-    renderWeekNav(); updateJDateLabel(); renderTodos();
+    renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle();
   });
 }
 $("#cal-prev").onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()-1); renderCalendar(); };
@@ -1570,14 +1634,14 @@ function renderWeekNav(){
       <span class="wl">${wl}</span><span class="wn">${d.getDate()}</span><span class="wdot${todoOpen[iso]?" show":""}"></span></button>`;
   }).join("");
   $("#j-weekstrip").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
-    selJDate = b.dataset.d; renderWeekNav(); updateJDateLabel(); renderTodos();
+    selJDate = b.dataset.d; renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle();
   });
   const isCurrentWeek = weekStart.getTime()===mondayOf(new Date()).getTime();
   $("#w-today").hidden = isCurrentWeek;
 }
 $("#w-prev").onclick = ()=>{ weekStart.setDate(weekStart.getDate()-7); renderWeekNav(); };
 $("#w-next").onclick = ()=>{ weekStart.setDate(weekStart.getDate()+7); renderWeekNav(); };
-$("#w-today").onclick = ()=>{ weekStart = mondayOf(new Date()); selJDate = todayIso(); renderWeekNav(); updateJDateLabel(); renderTodos(); };
+$("#w-today").onclick = ()=>{ weekStart = mondayOf(new Date()); selJDate = todayIso(); renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle(); };
 
 /* --- to-do list, scoped to the selected day --- */
 function renderTodos(){
@@ -1779,7 +1843,7 @@ function startEditEntry(id){
   $("#j-editing-label").textContent = `Editing your entry from ${dayLabel(e.date).toLowerCase()}`;
   $("#j-save").textContent = "Save changes";
   weekStart = mondayOf(parseIso(e.date));
-  renderWeekNav(); updateJDateLabel(); renderTodos();
+  renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle();
   document.querySelector(".composer").scrollIntoView({behavior:"smooth", block:"start"});
   jText.focus();
 }
@@ -1788,7 +1852,7 @@ function stopEditEntry(){
   $("#j-editing").hidden = true;
   $("#j-save").textContent = "Save entry";
   weekStart = mondayOf(new Date());
-  renderWeekNav(); updateJDateLabel(); renderTodos();
+  renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle();
 }
 $("#j-cancel").onclick = ()=>{
   jText.value=""; $("#j-count").textContent="";
@@ -2113,7 +2177,7 @@ function renderList(){
   }));
 }
 
-function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderPee(); renderWeekNav(); renderTodos(); renderList(); renderReview(); renderBackupLine(); }
+function renderJournal(){ renderStrip(); renderFlash(); renderStreakNudge(); renderPoop(); renderPee(); renderWeekNav(); renderTodos(); renderList(); renderReview(); renderBackupLine(); renderCheckinToggle(); }
 
 /* =====================================================
    REVIEW
@@ -2319,7 +2383,7 @@ function renderPixels(){
       if (existing) startEditEntry(existing.id);
       else {
         selJDate = iso; weekStart = mondayOf(parseIso(iso));
-        renderWeekNav(); updateJDateLabel(); renderTodos();
+        renderWeekNav(); updateJDateLabel(); renderTodos(); renderCheckinToggle();
       }
       setTimeout(()=>document.querySelector(".composer")?.scrollIntoView({behavior:"smooth", block:"start"}), 50);
     });
